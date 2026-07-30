@@ -1,0 +1,63 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  SECRETS — never commit these
+# ─────────────────────────────────────────────────────────────────────────────
+# backend/.env holds the Supabase SERVICE ROLE key (bypasses all RLS), the
+# Perspective API key and the admin password. frontend/.env holds the anon key.
+# Only the .example templates belong in version control.
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Dependencies
+# ─────────────────────────────────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Build output
+# ─────────────────────────────────────────────────────────────────────────────
+dist/
+dist-ssr/
+build/
+*.local
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Runtime data (admin lexicon + audit log are per-deployment state)
+# ─────────────────────────────────────────────────────────────────────────────
+backend/data/*.json
+backend/data/*.jsonl
+!backend/data/.gitkeep
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Logs & caches
+# ─────────────────────────────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm
+.cache/
+.vite/
+.eslintcache
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Editor / OS
+# ─────────────────────────────────────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Kiro local settings may contain machine-specific paths
+.kiro/settings/mcp.json
