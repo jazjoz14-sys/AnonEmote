@@ -92,6 +92,26 @@ export default function MonitorTab({ onAuthError }) {
           <StatCard label="Blocked" value={stats.verdicts.toxic || 0} accent="text-red-300" />
           <StatCard label="Crisis" value={stats.verdicts.crisis || 0} accent="text-violet-300" />
         </div>
+
+        {/* Deployment health — confirms persistence and AI layer are active */}
+        <div className="flex flex-wrap gap-2 mt-3">
+          <span className={`px-3 py-1 rounded-full text-xs border
+            ${stats.storage === 'database'
+              ? 'bg-emerald-900/25 text-emerald-300 border-emerald-700/40'
+              : 'bg-orange-900/25 text-orange-300 border-orange-700/40'}`}>
+            {stats.storage === 'database'
+              ? '✓ Persistent storage (database)'
+              : '⚠ Local file storage — resets on redeploy'}
+          </span>
+          <span className={`px-3 py-1 rounded-full text-xs border
+            ${stats.moderationEngine === 'perspective+local'
+              ? 'bg-emerald-900/25 text-emerald-300 border-emerald-700/40'
+              : 'bg-orange-900/25 text-orange-300 border-orange-700/40'}`}>
+            {stats.moderationEngine === 'perspective+local'
+              ? '✓ Perspective AI + local lexicons'
+              : '⚠ Local lexicons only — no API key set'}
+          </span>
+        </div>
       </section>
 
       {/* ── Distribution by planet ───────────────────────────────────────── */}

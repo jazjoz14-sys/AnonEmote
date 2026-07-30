@@ -2,7 +2,7 @@ import { Router } from 'express'
 import rateLimit from 'express-rate-limit'
 import { createClient } from '@supabase/supabase-js'
 import { login, logout, requireAdmin, activeSessionCount } from '../middleware/adminAuth.js'
-import { getLexicon, saveLexicon, appendAudit, readAudit } from '../lib/storage.js'
+import { getLexicon, saveLexicon, appendAudit, readAudit, storageMode } from '../lib/storage.js'
 
 export const adminRouter = Router()
 
@@ -97,6 +97,9 @@ adminRouter.get('/stats', requireAdmin, async (_req, res) => {
     byPlanet,
     verdicts,
     activeAdminSessions: activeSessionCount(),
+    // 'database' once 003_admin_persistence.sql has been applied, else 'file'
+    storage: storageMode(),
+    moderationEngine: process.env.PERSPECTIVE_API_KEY ? 'perspective+local' : 'local-only',
   })
 })
 

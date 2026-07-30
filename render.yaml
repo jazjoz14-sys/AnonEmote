@@ -1,0 +1,43 @@
+# Render blueprint for the AnonEmote backend.
+#
+# In Render: New → Blueprint → connect this repo. Render reads this file and
+# pre-fills the service. Secrets are marked sync:false so they are never stored
+# in version control — you enter them once in the dashboard.
+#
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: anonemote-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      # Render assigns the port at runtime; the server already reads process.env.PORT
+      - key: NODE_VERSION
+        value: 20
+
+      # ── Supabase ────────────────────────────────────────────────────────
+      - key: SUPABASE_URL
+        sync: false
+      # service_role key — bypasses RLS. Enter in the dashboard only.
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+
+      # ── Moderation ──────────────────────────────────────────────────────
+      # Optional. Without it the engine uses local lexicons only.
+      - key: PERSPECTIVE_API_KEY
+        sync: false
+
+      # ── Admin console ───────────────────────────────────────────────────
+      - key: ADMIN_PASSWORD
+        sync: false
+
+      # ── CORS ────────────────────────────────────────────────────────────
+      # Set to your deployed frontend origin, e.g.
+      #   https://anonemote.vercel.app
+      - key: CORS_ORIGIN
+        sync: false

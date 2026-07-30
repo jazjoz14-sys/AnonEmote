@@ -1,42 +1,96 @@
 /**
- * File-backed storage for the admin-editable lexicon and the audit log.
+ * Storage for the admin-editable lexicon and the audit log.
  *
- * Deliberately file-based rather than a new Postgres table: the lexicon is
- * small, read on every moderation call, and needs to survive restarts without
- * requiring another schema migration.
+ * Primary store is Postgres (Supabase), so state survives redeploys and is
+ * shared across instances. If the database is unavailable the module degrades
+ * to the local files it used previously, which keeps development working
+ * without a configured database and prevents moderation from failing hard.
+ *
+ * The lexicon is cached in memory because it is read on every moderation call.
  */
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { promises as fs } from 'fs'
 import { existsSync, mkdirSync } from 'fs'
+import { createClient } from '@supabase/supabase-js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const DATA_DIR = join(__dirname, '..', '..', 'data')
 const LEXICON_PATH = join(DATA_DIR, 'lexicon.json')
 const AUDIT_PATH = join(DATA_DIR, 'audit-log.jsonl')
 
-// Ensure the data directory exists at startup
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
 
-/** Shape of the admin-editable lexicon. */
 const EMPTY_LEXICON = { crisis: [], toxic: [], allow: [] }
+const CATEGORIES = ['crisis', 'toxic', 'allow']
 
-// In-memory cache so the moderation hot path never touches disk
 let lexiconCache = null
+let _supabase = null
+/** Set true once a DB call fails, so we stop retrying on every request. */
+let dbUnavailable = false
+
+function getSupabase() {
+  if (_supabase) return _supabase
+  const url = process.env.SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_KEY
+  if (!url || !key) return null
+  _supabase = createClient(url, key)
+  return _supabase
+}
+
+/** Which backing store is in use — surfaced on the admin dashboard. */
+export function storageMode() {
+  if (dbUnavailable || !getSupabase()) return 'file'
+  return 'database'
+}
+
+/* ── Lexicon ──────────────────────────────────────────────────────────────── */
+
+function normaliseTerms(arr) {
+  return [...new Set(
+    (Array.isArray(arr) ? arr : [])
+      .map((t) => String(t).toLowerCase().trim())
+      .filter((t) => t.length > 0 && t.length <= 100)
+  )]
+}
 
 /**
- * Read the custom lexicon, caching in memory.
+ * Read the lexicon, preferring the database.
  * @returns {Promise<{crisis:string[], toxic:string[], allow:string[]}>}
  */
 export async function getLexicon() {
   if (lexiconCache) return lexiconCache
+
+  const supabase = getSupabase()
+
+  if (supabase && !dbUnavailable) {
+    const { data, error } = await supabase
+      .from('filter_lexicon')
+      .select('category, terms')
+
+    if (!error && data) {
+      const next = { ...EMPTY_LEXICON }
+      for (const row of data) {
+        if (CATEGORIES.includes(row.category)) {
+          next[row.category] = Array.isArray(row.terms) ? row.terms : []
+        }
+      }
+      lexiconCache = next
+      return lexiconCache
+    }
+
+    console.warn('[Storage] lexicon DB read failed, falling back to file:', error?.message)
+    dbUnavailable = true
+  }
+
+  // File fallback
   try {
     const raw = await fs.readFile(LEXICON_PATH, 'utf8')
     const parsed = JSON.parse(raw)
     lexiconCache = {
-      crisis: Array.isArray(parsed.crisis) ? parsed.crisis : [],
-      toxic: Array.isArray(parsed.toxic) ? parsed.toxic : [],
-      allow: Array.isArray(parsed.allow) ? parsed.allow : [],
+      crisis: normaliseTerms(parsed.crisis),
+      toxic: normaliseTerms(parsed.toxic),
+      allow: normaliseTerms(parsed.allow),
     }
   } catch {
     lexiconCache = { ...EMPTY_LEXICON }
@@ -51,24 +105,42 @@ export function getLexiconSync() {
 
 /**
  * Persist the lexicon and refresh the cache.
- * Terms are lowercased, trimmed and de-duplicated.
+ * Writes to the database when available, otherwise to disk.
  */
 export async function saveLexicon(next) {
-  const clean = (arr) =>
-    [...new Set(
-      (Array.isArray(arr) ? arr : [])
-        .map((t) => String(t).toLowerCase().trim())
-        .filter((t) => t.length > 0 && t.length <= 100)
-    )]
-
   const payload = {
-    crisis: clean(next.crisis),
-    toxic: clean(next.toxic),
-    allow: clean(next.allow),
+    crisis: normaliseTerms(next.crisis),
+    toxic: normaliseTerms(next.toxic),
+    allow: normaliseTerms(next.allow),
     updatedAt: new Date().toISOString(),
   }
 
-  await fs.writeFile(LEXICON_PATH, JSON.stringify(payload, null, 2), 'utf8')
+  const supabase = getSupabase()
+  let persisted = false
+
+  if (supabase && !dbUnavailable) {
+    const rows = CATEGORIES.map((category) => ({
+      category,
+      terms: payload[category],
+      updated_at: payload.updatedAt,
+    }))
+
+    const { error } = await supabase
+      .from('filter_lexicon')
+      .upsert(rows, { onConflict: 'category' })
+
+    if (error) {
+      console.warn('[Storage] lexicon DB write failed, falling back to file:', error.message)
+      dbUnavailable = true
+    } else {
+      persisted = true
+    }
+  }
+
+  if (!persisted) {
+    await fs.writeFile(LEXICON_PATH, JSON.stringify(payload, null, 2), 'utf8')
+  }
+
   lexiconCache = {
     crisis: payload.crisis,
     toxic: payload.toxic,
@@ -77,19 +149,36 @@ export async function saveLexicon(next) {
   return payload
 }
 
+/* ── Audit log ────────────────────────────────────────────────────────────── */
+
 /**
- * Append an entry to the audit log (newline-delimited JSON).
+ * Append an audit entry.
  *
- * Never store post content or anything that could identify a user — only
- * verdicts, ids and counts. This preserves the zero-knowledge guarantee even
- * for administrators.
+ * Never records post content, session ids, or anything that could identify a
+ * user — only verdicts, layers, counts and ids. This preserves anonymity even
+ * from administrators.
+ *
+ * Fire-and-forget: callers do not await, so a slow write never delays a user.
  */
 export async function appendAudit(entry) {
-  const line = JSON.stringify({ ts: new Date().toISOString(), ...entry })
+  const { type = 'event', ...payload } = entry || {}
+  const supabase = getSupabase()
+
+  if (supabase && !dbUnavailable) {
+    const { error } = await supabase
+      .from('audit_log')
+      .insert({ type, payload })
+
+    if (!error) return
+    console.warn('[Storage] audit DB write failed, falling back to file:', error.message)
+    dbUnavailable = true
+  }
+
   try {
+    const line = JSON.stringify({ ts: new Date().toISOString(), type, ...payload })
     await fs.appendFile(AUDIT_PATH, line + '\n', 'utf8')
   } catch (err) {
-    console.error('[Audit] write failed:', err.message)
+    console.error('[Storage] audit write failed entirely:', err.message)
   }
 }
 
@@ -98,6 +187,29 @@ export async function appendAudit(entry) {
  * @param {{limit?: number, type?: string}} opts
  */
 export async function readAudit({ limit = 200, type } = {}) {
+  const capped = Math.min(limit, 1000)
+  const supabase = getSupabase()
+
+  if (supabase && !dbUnavailable) {
+    let query = supabase
+      .from('audit_log')
+      .select('ts, type, payload')
+      .order('ts', { ascending: false })
+      .limit(capped)
+
+    if (type) query = query.eq('type', type)
+
+    const { data, error } = await query
+
+    if (!error && data) {
+      // Flatten payload up to the top level so the admin UI shape is unchanged
+      return data.map((row) => ({ ts: row.ts, type: row.type, ...(row.payload || {}) }))
+    }
+
+    console.warn('[Storage] audit DB read failed, falling back to file:', error?.message)
+    dbUnavailable = true
+  }
+
   let raw
   try {
     raw = await fs.readFile(AUDIT_PATH, 'utf8')
@@ -112,8 +224,8 @@ export async function readAudit({ limit = 200, type } = {}) {
     .filter(Boolean)
 
   const filtered = type ? entries.filter((e) => e.type === type) : entries
-  return filtered.reverse().slice(0, Math.min(limit, 1000))
+  return filtered.reverse().slice(0, capped)
 }
 
-// Warm the cache at startup
+// Warm the lexicon cache at startup so the first moderation call is not delayed
 getLexicon().catch(() => {})
