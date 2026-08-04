@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import useAppStore from '../../store/useAppStore'
 import useDraggable from '../../hooks/useDraggable'
+import { apiFetch } from '../../lib/api'
 
 const MAX_CHARS = 280
 const PANEL_W = 480
@@ -21,7 +22,8 @@ export default function PostModal() {
   const {
     selectedPlanet,
     setPostModalOpen,
-    setCrisisModalOpen,
+    openCrisis,
+    crisis,
     sessionId,
     addPost,
     checkIn,
@@ -37,7 +39,9 @@ export default function PostModal() {
     height: 440,
   })
 
-  const [text, setText] = useState('')
+  // Seed from a preserved crisis draft, so choosing "Keep writing" returns the
+  // user to exactly what they had typed.
+  const [text, setText] = useState(() => crisis?.draft || '')
   const [status, setStatus] = useState('idle') // idle | checking | blocked | success | error
   const [errorMsg, setErrorMsg] = useState('')
 
@@ -49,9 +53,8 @@ export default function PostModal() {
     setErrorMsg('')
 
     try {
-      const res = await fetch('/api/moderate', {
+      const res = await apiFetch('/api/moderate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: text.trim(),
           planet_id: selectedPlanet.id,
@@ -61,10 +64,12 @@ export default function PostModal() {
 
       const data = await res.json()
 
+      // Crisis detected. Hand the draft to the crisis flow rather than
+      // discarding it — the user decides what happens to their own words.
       if (res.status === 403) {
         setStatus('idle')
+        openCrisis({ draft: text, referral: data.referral })
         setPostModalOpen(false)
-        setCrisisModalOpen(true)
         return
       }
 
@@ -93,9 +98,15 @@ export default function PostModal() {
 
   const handleClose = () => {
     setPostModalOpen(false)
-    setText('')
     setStatus('idle')
     setErrorMsg('')
+    // Keep a crisis-preserved draft in the store so closing the panel does not
+    // destroy writing the user has not yet decided about.
+    if (crisis?.draft) {
+      useAppStore.setState((s) => ({ crisis: { ...s.crisis, draft: text } }))
+    } else {
+      setText('')
+    }
   }
 
   return (

@@ -19,10 +19,41 @@ import { adminRouter } from './routes/admin.js'
 const app = express()
 const PORT = process.env.PORT || 3001
 
+// ── Proxy awareness ──────────────────────────────────────────────────────────
+// Render, Railway, Fly and similar hosts sit behind a load balancer. Without
+// this, req.ip resolves to the proxy for every request, which would make IP
+// rate limiting and report deduplication useless (all users share one address).
+app.set('trust proxy', 1)
+
 // ── Security middleware ──────────────────────────────────────────────────────
 app.use(helmet())
+/**
+ * CORS_ORIGIN accepts a comma-separated list, because a deployed frontend
+ * typically has more than one valid origin (production domain plus Vercel
+ * preview URLs) and local development still needs to reach a hosted backend.
+ */
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map((o) => o.trim().replace(/\/+$/, ''))
+  .filter(Boolean)
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin(origin, callback) {
+    // Requests with no Origin header (curl, server-to-server, health checks)
+    if (!origin) return callback(null, true)
+
+    const clean = origin.replace(/\/+$/, '')
+    if (allowedOrigins.includes(clean)) return callback(null, true)
+
+    // Allow Vercel preview deployments for this project without having to add
+    // every generated URL by hand.
+    if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(clean)) {
+      return callback(null, true)
+    }
+
+    console.warn('[CORS] blocked origin:', origin)
+    return callback(new Error('Not allowed by CORS'))
+  },
   methods: ['GET', 'POST'],
   credentials: false,
 }))

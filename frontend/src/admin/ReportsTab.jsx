@@ -18,6 +18,30 @@ const REASON_STYLE = {
   other: 'bg-slate-800/50 text-slate-400 border-slate-700/40',
 }
 
+/** Review workflow state, shown per post. */
+function StatusBadge({ status, hidden }) {
+  const config = {
+    pending:     { label: 'awaiting review', cls: 'bg-amber-900/30 text-amber-300 border-amber-700/40' },
+    quarantined: { label: 'quarantined',     cls: 'bg-red-900/40 text-red-200 border-red-600/50' },
+    cleared:     { label: 'approved',        cls: 'bg-sky-900/30 text-sky-300 border-sky-700/40' },
+    ok:          { label: 'visible',         cls: 'bg-white/5 text-slate-500 border-white/10' },
+  }[status] || { label: status || 'unknown', cls: 'bg-white/5 text-slate-500 border-white/10' }
+
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className={`px-2 py-0.5 rounded-full text-xs border ${config.cls}`}>
+        {config.label}
+      </span>
+      {hidden && (
+        <span className="px-2 py-0.5 rounded-full text-xs bg-slate-800/60
+                         text-slate-400 border border-slate-700/50">
+          hidden
+        </span>
+      )}
+    </span>
+  )
+}
+
 /**
  * ReportsTab — Flow 2 of the admin sequence:
  * manage reported content → remove/flag → confirm action.
@@ -58,11 +82,12 @@ export default function ReportsTab({ onAuthError }) {
     try {
       await postAction(postId, action)
       await resolveReports(group.reportIds)
-      flash(
-        action === 'delete' ? 'Post permanently deleted.'
-        : action === 'hide' ? 'Post hidden from users.'
-        : 'Post restored and visible again.'
-      )
+      flash({
+        delete:  'Post permanently deleted.',
+        hide:    'Post quarantined and hidden from users.',
+        restore: 'Post restored — still in the review queue.',
+        clear:   'Post approved and protected from further auto-flagging.',
+      }[action] || 'Action completed.')
       await load()
     } catch (err) {
       if (err.status === 401) return onAuthError()
@@ -154,20 +179,49 @@ export default function ReportsTab({ onAuthError }) {
                     <span className="text-xs text-slate-600">
                       {new Date(g.post.created_at).toLocaleString()}
                     </span>
-                    {g.post.is_hidden && (
-                      <span className="px-2 py-0.5 rounded-full text-xs bg-orange-900/40
-                                       text-orange-300 border border-orange-700/40">
-                        currently hidden
-                      </span>
-                    )}
+                    <StatusBadge status={g.post.review_status} hidden={g.post.is_hidden} />
                   </div>
-                  <span className={`px-2 py-0.5 rounded-full text-xs border
-                    ${g.reportCount >= 3
-                      ? 'bg-red-900/40 text-red-200 border-red-600/50'
-                      : 'bg-white/5 text-slate-400 border-white/10'}`}>
-                    {g.reportCount} report{g.reportCount === 1 ? '' : 's'}
-                  </span>
+
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* Distinct networks is the trustworthy signal; raw count
+                        can be inflated by one person cycling sessions. */}
+                    <span
+                      title="Independent networks that reported this"
+                      className={`px-2 py-0.5 rounded-full text-xs border
+                        ${g.distinctNetworks >= 3
+                          ? 'bg-red-900/40 text-red-200 border-red-600/50'
+                          : g.distinctNetworks >= 2
+                            ? 'bg-orange-900/30 text-orange-300 border-orange-700/40'
+                            : 'bg-white/5 text-slate-400 border-white/10'}`}
+                    >
+                      {g.distinctNetworks} network{g.distinctNetworks === 1 ? '' : 's'}
+                    </span>
+                    <span
+                      title="Total reports (may include repeats from one person)"
+                      className="px-2 py-0.5 rounded-full text-xs bg-white/5
+                                 text-slate-500 border border-white/10"
+                    >
+                      {g.reportCount} report{g.reportCount === 1 ? '' : 's'}
+                    </span>
+                    <span
+                      title="Severity-weighted priority"
+                      className="px-2 py-0.5 rounded-full text-xs bg-violet-900/30
+                                 text-violet-300 border border-violet-700/40"
+                    >
+                      P{g.priority}
+                    </span>
+                  </div>
                 </div>
+
+                {/* Single-network warning — the brigading signal */}
+                {g.distinctNetworks === 1 && g.reportCount > 1 && (
+                  <p className="text-xs text-orange-300/90 bg-orange-900/20 border
+                                border-orange-700/30 rounded-lg px-3 py-2">
+                    ⚠ All {g.reportCount} reports came from a single network — this
+                    may be one person reporting repeatedly rather than genuine
+                    community concern.
+                  </p>
+                )}
 
                 {/* Reported content */}
                 <p className="text-sm text-slate-200 bg-black/30 rounded-xl px-3 py-2.5
@@ -242,6 +296,20 @@ export default function ReportsTab({ onAuthError }) {
                                disabled:opacity-40 transition-all"
                   >
                     🗑 Delete permanently
+                  </button>
+
+                  {/* Clear marks the post as reviewed-and-acceptable, which
+                      makes it immune to further automatic flagging. This is the
+                      remedy for a brigaded post. */}
+                  <button
+                    onClick={() => act(g, 'clear')}
+                    disabled={isBusy}
+                    title="Approve this post and protect it from further auto-flagging"
+                    className="px-3 py-2 rounded-xl text-xs font-semibold text-sky-200
+                               bg-sky-900/40 hover:bg-sky-900/60 border border-sky-700/40
+                               disabled:opacity-40 transition-all"
+                  >
+                    ✓ Approve &amp; protect
                   </button>
 
                   <button

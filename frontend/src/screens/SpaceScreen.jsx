@@ -188,14 +188,14 @@ function ContextLossGuard({ onLost }) {
 export default function SpaceScreen() {
   const {
     setPosts, selectedPlanet,
-    crisisModalOpen, reportTarget,
+    crisis, reportTarget,
   } = useAppStore()
   const controlsRef = useRef()
   const [contextLost, setContextLost] = useState(false)
 
   // Only *blocking* dialogs freeze the scene. The broadcast composer is a
   // draggable floating panel, so the star system stays navigable behind it.
-  const modalOpen = crisisModalOpen || !!reportTarget
+  const modalOpen = crisis.open || !!reportTarget
 
   useEffect(() => {
     let channel

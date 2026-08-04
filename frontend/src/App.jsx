@@ -28,13 +28,14 @@ function useIsAdminRoute() {
 export default function App() {
   const isAdmin = useIsAdminRoute()
 
-  const { phase, initSession, crisisModalOpen, postModalOpen, reportTarget } =
+  const { phase, initSession, loadPrivateNotes, crisis, postModalOpen, reportTarget } =
     useAppStore()
 
-  // Initialize anonymous session on mount
+  // Initialize anonymous session and restore any private notes from this tab
   useEffect(() => {
     initSession()
-  }, [initSession])
+    loadPrivateNotes()
+  }, [initSession, loadPrivateNotes])
 
   // The admin console renders on its own — the 3D canvas is never mounted here,
   // which also avoids allocating a WebGL context for administrative work.
@@ -51,7 +52,7 @@ export default function App() {
       {/* Global overlays, layered above everything */}
       {postModalOpen && <PostModal />}
       {reportTarget && <ReportModal />}
-      {crisisModalOpen && <CrisisModal />}
+      {crisis.open && <CrisisModal />}
     </div>
   )
 }

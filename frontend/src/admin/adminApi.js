@@ -4,6 +4,8 @@
  * The session token is held in sessionStorage so it clears when the tab
  * closes, and is sent as a Bearer header on every request.
  */
+import { apiFetch } from '../lib/api'
+
 const TOKEN_KEY = 'anonemote_admin_token'
 
 export const getToken = () => sessionStorage.getItem(TOKEN_KEY)
@@ -15,10 +17,9 @@ export const clearToken = () => sessionStorage.removeItem(TOKEN_KEY)
  * Throws an Error with `.status` so callers can detect 401s.
  */
 async function request(path, options = {}) {
-  const res = await fetch(`/api/admin${path}`, {
+  const res = await apiFetch(`/api/admin${path}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
       ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
       ...options.headers,
     },

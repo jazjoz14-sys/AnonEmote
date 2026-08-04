@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import useAppStore from '../../store/useAppStore'
 import { REACTIONS } from '../../data/reactions'
+import { apiFetch } from '../../lib/api'
 
 /**
  * ReactionBar — emoji-only reactions plus a report action for a single post.
@@ -29,9 +30,8 @@ export default function ReactionBar({ post, accentColor = '#8b5cf6' }) {
     applyReaction(post.id, emoji)
 
     try {
-      const res = await fetch('/api/reactions', {
+      const res = await apiFetch('/api/reactions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ post_id: post.id, session_id: sessionId, emoji }),
       })
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import useAppStore from '../../store/useAppStore'
 import { REPORT_REASONS } from '../../data/reactions'
+import { apiFetch } from '../../lib/api'
 
 /**
  * ReportModal — lets a reader flag a post.
@@ -32,9 +33,8 @@ export default function ReportModal() {
     setStatus('sending')
 
     try {
-      const res = await fetch('/api/reports', {
+      const res = await apiFetch('/api/reports', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           post_id: reportTarget.id,
           session_id: sessionId,

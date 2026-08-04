@@ -21,13 +21,13 @@ export default function EmotionPlanet({ planet }) {
 
   const {
     setSelectedPlanet, selectedPlanet, posts,
-    crisisModalOpen, reportTarget,
+    crisis, reportTarget,
   } = useAppStore()
   const isSelected = selectedPlanet?.id === planet.id
 
   // Hide 3D HTML overlays behind fully blocking dialogs. The broadcast
   // composer is a floating panel, so snippets stay visible while drafting.
-  const modalOpen = crisisModalOpen || !!reportTarget
+  const modalOpen = crisis.open || !!reportTarget
 
   // Recent posts floating around this planet (up to 5)
   const planetPosts = useMemo(

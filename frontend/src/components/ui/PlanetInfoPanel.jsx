@@ -2,6 +2,7 @@ import React, { useMemo, useEffect } from 'react'
 import useAppStore from '../../store/useAppStore'
 import useDraggable from '../../hooks/useDraggable'
 import ReactionBar from './ReactionBar'
+import { apiFetch } from '../../lib/api'
 
 const PANEL_W = 320
 
@@ -47,7 +48,7 @@ export default function PlanetInfoPanel() {
     const params = new URLSearchParams({ post_ids: postIdsKey, session_id: sessionId })
 
     let cancelled = false
-    fetch(`/api/reactions?${params}`)
+    apiFetch(`/api/reactions?${params}`)
       .then((r) => (r.ok ? r.json() : {}))
       .then((summary) => { if (!cancelled) mergeReactions(summary) })
       .catch((err) => console.error('[PlanetInfoPanel] reactions', err))

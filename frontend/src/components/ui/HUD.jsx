@@ -1,13 +1,15 @@
-import React from 'react'
+import React, { useState } from 'react'
 import useAppStore from '../../store/useAppStore'
 import { PLANETS } from '../../data/planets'
+import PrivateNotesPanel from './PrivateNotesPanel'
 
 /**
  * HUD — The glassmorphism overlay on the SpaceScreen.
  * Shows the planet legend, session info, and back button.
  */
 export default function HUD() {
-  const { setPhase, sessionId, setSelectedPlanet } = useAppStore()
+  const { setPhase, sessionId, setSelectedPlanet, privateNotes } = useAppStore()
+  const [notesOpen, setNotesOpen] = useState(false)
 
   const shortId = sessionId ? sessionId.slice(0, 8).toUpperCase() : '--------'
 
@@ -29,6 +31,21 @@ export default function HUD() {
       >
         ← Avatar
       </button>
+
+      {/* Private notes — only shown once the user has saved something */}
+      {privateNotes.length > 0 && (
+        <button
+          onClick={() => setNotesOpen((v) => !v)}
+          className="absolute top-16 left-4 z-20 glass px-4 py-2 rounded-xl text-sm
+                     text-slate-400 hover:text-white transition-colors"
+          aria-label="My private notes"
+        >
+          🔒 My notes
+          <span className="ml-1 text-xs text-violet-300">{privateNotes.length}</span>
+        </button>
+      )}
+
+      {notesOpen && <PrivateNotesPanel onClose={() => setNotesOpen(false)} />}
 
       {/* Planet legend — bottom */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2 flex-wrap justify-center max-w-2xl px-4">

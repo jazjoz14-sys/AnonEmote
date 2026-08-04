@@ -105,10 +105,67 @@ const useAppStore = create((set, get) => ({
   reportTarget: null, // the post object being reported, or null
   setReportTarget: (post) => set({ reportTarget: post }),
 
-  // ── Modals ────────────────────────────────────────────────────────────────
-  crisisModalOpen: false,
-  setCrisisModalOpen: (v) => set({ crisisModalOpen: v }),
+  // ── Crisis support ────────────────────────────────────────────────────────
+  /**
+   * When the moderation engine detects crisis indicators the post is not
+   * stored, but the user's writing is never thrown away. The draft is held
+   * here so they decide what happens to it — not the system.
+   */
+  crisis: {
+    open: false,
+    draft: '',        // exactly what the user wrote
+    referral: null,   // hotline payload from the backend
+  },
 
+  openCrisis: ({ draft, referral }) =>
+    set({ crisis: { open: true, draft: draft || '', referral: referral || null } }),
+
+  closeCrisis: () =>
+    set((s) => ({ crisis: { ...s.crisis, open: false } })),
+
+  /** Clear the draft only once the user has explicitly discarded it. */
+  clearCrisisDraft: () =>
+    set({ crisis: { open: false, draft: '', referral: null } }),
+
+  // ── Private notes ─────────────────────────────────────────────────────────
+  /**
+   * Writing the user chose to keep for themselves. Held in sessionStorage
+   * only — never sent to the server, and cleared when the tab closes so
+   * nothing is left behind on a shared campus computer.
+   */
+  privateNotes: [],
+
+  loadPrivateNotes: () => {
+    try {
+      const raw = sessionStorage.getItem('anonemote_private_notes')
+      set({ privateNotes: raw ? JSON.parse(raw) : [] })
+    } catch {
+      set({ privateNotes: [] })
+    }
+  },
+
+  savePrivateNote: (text) =>
+    set((s) => {
+      const next = [
+        { id: crypto.randomUUID(), text, savedAt: new Date().toISOString() },
+        ...s.privateNotes,
+      ]
+      try {
+        sessionStorage.setItem('anonemote_private_notes', JSON.stringify(next))
+      } catch { /* storage full or blocked — keep in memory */ }
+      return { privateNotes: next }
+    }),
+
+  deletePrivateNote: (id) =>
+    set((s) => {
+      const next = s.privateNotes.filter((n) => n.id !== id)
+      try {
+        sessionStorage.setItem('anonemote_private_notes', JSON.stringify(next))
+      } catch { /* ignore */ }
+      return { privateNotes: next }
+    }),
+
+  // ── Modals ────────────────────────────────────────────────────────────────
   postModalOpen: false,
   setPostModalOpen: (v) => set({ postModalOpen: v }),
 }))

@@ -125,16 +125,35 @@ adminRouter.get('/reports', requireAdmin, async (req, res) => {
 
   const status = req.query.status || 'pending'
 
-  let query = supabase
-    .from('reports')
-    .select('id, post_id, reason, note, reviewed, created_at')
-    .order('created_at', { ascending: false })
-    .limit(300)
+  /**
+   * Load reports, selecting the integrity columns when available.
+   * Falls back to the legacy column set if 003_report_integrity.sql has not
+   * been applied yet, so the review queue keeps working either way.
+   */
+  const runQuery = async (columns) => {
+    let q = supabase
+      .from('reports')
+      .select(columns)
+      .order('created_at', { ascending: false })
+      .limit(300)
 
-  if (status === 'pending') query = query.eq('reviewed', false)
-  if (status === 'reviewed') query = query.eq('reviewed', true)
+    if (status === 'pending') q = q.eq('reviewed', false)
+    if (status === 'reviewed') q = q.eq('reviewed', true)
 
-  const { data: reports, error } = await query
+    return q
+  }
+
+  let { data: reports, error } = await runQuery(
+    'id, post_id, reason, note, reviewed, created_at, reporter_hash, weight'
+  )
+
+  if (error) {
+    console.warn('[Admin reports] integrity columns unavailable, using legacy select:', error.message)
+    const retry = await runQuery('id, post_id, reason, note, reviewed, created_at')
+    reports = retry.data
+    error = retry.error
+  }
+
   if (error) {
     console.error('[Admin reports]', error.message)
     return res.status(500).json({ error: 'Failed to load reports.' })
@@ -145,25 +164,47 @@ adminRouter.get('/reports', requireAdmin, async (req, res) => {
   let postsById = {}
 
   if (postIds.length > 0) {
-    const { data: posts } = await supabase
+    let { data: posts, error: postErr } = await supabase
       .from('posts')
-      .select('id, content, planet_id, is_hidden, created_at')
+      .select('id, content, planet_id, is_hidden, created_at, review_status, report_score, flagged_at')
       .in('id', postIds)
+
+    // Graceful fallback if 003_report_integrity.sql has not been applied
+    if (postErr) {
+      const retry = await supabase
+        .from('posts')
+        .select('id, content, planet_id, is_hidden, created_at')
+        .in('id', postIds)
+      posts = retry.data
+    }
+
     postsById = Object.fromEntries((posts || []).map((p) => [p.id, p]))
   }
 
   // Group reports by post so the admin reviews a post once, not per report
   const grouped = postIds.map((id) => {
     const forPost = reports.filter((r) => r.post_id === id)
+
+    // Distinct networks is the meaningful signal — raw report count can be
+    // inflated by one person cycling sessions.
+    const networks = new Set(
+      forPost.map((r) => r.reporter_hash || `session:${r.id}`)
+    )
+
     return {
       post: postsById[id] || null,
       reportCount: forPost.length,
+      distinctNetworks: networks.size,
+      priority: forPost.reduce((sum, r) => sum + (r.weight || 1), 0),
       reasons: [...new Set(forPost.map((r) => r.reason))],
       notes: forPost.map((r) => r.note).filter(Boolean),
       reportIds: forPost.map((r) => r.id),
       latestAt: forPost[0]?.created_at,
     }
   }).filter((g) => g.post)
+
+  // Highest priority first so the most serious items surface at the top
+  grouped.sort((a, b) => b.priority - a.priority)
 
   res.json({ groups: grouped })
 })
@@ -182,8 +223,9 @@ adminRouter.post('/posts/:id/action', requireAdmin, async (req, res) => {
   const { id } = req.params
   const { action } = req.body || {}
 
-  if (!['hide', 'restore', 'delete'].includes(action)) {
-    return res.status(400).json({ error: 'action must be hide, restore or delete.' })
+  const ALLOWED = ['hide', 'restore', 'clear', 'delete']
+  if (!ALLOWED.includes(action)) {
+    return res.status(400).json({ error: `action must be one of: ${ALLOWED.join(', ')}` })
   }
 
   if (action === 'delete') {
@@ -196,10 +238,32 @@ adminRouter.post('/posts/:id/action', requireAdmin, async (req, res) => {
     return res.json({ ok: true, action: 'delete' })
   }
 
-  const is_hidden = action === 'hide'
-  const { error } = await supabase.from('posts').update({ is_hidden }).eq('id', id)
+  // Map each action onto the review workflow.
+  //   hide    → remove from feed, keep in queue as quarantined
+  //   restore → return to feed, still flagged for review
+  //   clear   → reviewed and acceptable; immune to further auto-flagging so
+  //             brigading cannot repeatedly re-quarantine the same post
+  const patch = {
+    hide:    { is_hidden: true,  review_status: 'quarantined' },
+    restore: { is_hidden: false, review_status: 'pending' },
+    clear:   { is_hidden: false, review_status: 'cleared' },
+  }[action]
+
+  let { error } = await supabase.from('posts').update(patch).eq('id', id)
+
+  // Fall back to visibility-only if 003_report_integrity.sql has not been
+  // applied. The action still works; it just cannot record review state.
   if (error) {
-    console.error('[Admin flag]', error.message)
+    console.warn('[Admin action] review_status unavailable, updating visibility only:', error.message)
+    const retry = await supabase
+      .from('posts')
+      .update({ is_hidden: patch.is_hidden })
+      .eq('id', id)
+    error = retry.error
+  }
+
+  if (error) {
+    console.error('[Admin action]', error.message)
     return res.status(500).json({ error: 'Failed to update post.' })
   }
 
