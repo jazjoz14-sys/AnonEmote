@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import useAppStore from '../../store/useAppStore'
 import PlanetDecor from './PlanetDecor'
 import { CLAY, makeClayBlob } from './clay'
+import { sceneConfig } from '../../lib/device'
 
 /**
  * EmotionPlanet — A clickable 3D sphere representing one emotional state.
@@ -38,7 +39,7 @@ export default function EmotionPlanet({ planet }) {
   // Lumpy clay body, seeded per planet so each keeps a distinct shape
   const clayGeo = useMemo(() => {
     const seed = planet.id.charCodeAt(0) + planet.id.length * 13
-    return makeClayBlob(planet.size, 4, 0.055, seed)
+    return makeClayBlob(planet.size, sceneConfig.planetDetail, 0.055, seed)
   }, [planet.id, planet.size])
 
   // Orbit state — random starting angle so planets spread out naturally
@@ -134,8 +135,9 @@ export default function EmotionPlanet({ planet }) {
         />
       </mesh>
 
-      {/* Emotion-specific clay props */}
-      <PlanetDecor planet={planet} />
+      {/* Emotion-specific clay props — disabled on low-end devices to
+          preserve framerate and avoid context loss */}
+      {sceneConfig.decorEnabled && <PlanetDecor planet={planet} />}
 
       {/* Selection ring around chosen planet */}
       {isSelected && (

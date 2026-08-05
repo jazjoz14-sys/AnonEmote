@@ -2,9 +2,10 @@ import React, { useState } from 'react'
 import useAppStore from '../../store/useAppStore'
 import useDraggable from '../../hooks/useDraggable'
 import { apiFetch } from '../../lib/api'
+import { isSmallScreen } from '../../lib/device'
 
 const MAX_CHARS = 280
-const PANEL_W = 480
+const PANEL_W = isSmallScreen ? Math.min(440, window.innerWidth - 16) : 480
 
 /**
  * PostModal — a draggable floating composer panel.

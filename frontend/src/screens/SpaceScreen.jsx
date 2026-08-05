@@ -6,6 +6,7 @@ import * as THREE from 'three'
 import useAppStore from '../store/useAppStore'
 import StarSystem from '../components/3d/StarSystem'
 import GalacticBackdrop from '../components/3d/GalacticBackdrop'
+import { sceneConfig, isSmallScreen } from '../lib/device'
 import HUD from '../components/ui/HUD'
 import PlanetInfoPanel from '../components/ui/PlanetInfoPanel'
 import { supabase } from '../lib/supabase'
@@ -269,9 +270,9 @@ export default function SpaceScreen() {
         className="w-full h-full"
         // Cap pixel ratio — on high-DPI screens an uncapped dpr can allocate
         // several times more GPU memory than needed and trigger context loss.
-        dpr={[1, 1.5]}
-        // Soft shadows suit the claymation look; the central star is the caster
-        shadows={{ type: THREE.PCFSoftShadowMap }}
+        dpr={sceneConfig.dpr}
+        // Soft shadows only on devices that can afford them
+        shadows={sceneConfig.shadowMapSize > 0 ? { type: THREE.PCFSoftShadowMap } : false}
         gl={{
           antialias: true,
           powerPreference: 'high-performance',
@@ -308,7 +309,7 @@ export default function SpaceScreen() {
           <pointLight position={[-90, -30, 70]} intensity={0.22} color="#60a5fa" />
 
           {/* Nebula skydome + flicker-free starfield, in the project palette */}
-          <GalacticBackdrop starCount={3500} />
+          <GalacticBackdrop starCount={sceneConfig.starCount} />
 
           <StarSystem />
 
@@ -316,38 +317,36 @@ export default function SpaceScreen() {
 
           <ContextLossGuard onLost={(lost = true) => setContextLost(lost)} />
 
-          {/* ── Post-processing ──────────────────────────────────────────────
-              Bloom makes the star and emissive accents bleed light into the
-              surrounding darkness, which is what sells it as a light source
-              rather than a bright circle. luminanceThreshold is set above the
-              matte clay values so only genuinely bright surfaces glow — the
-              planets themselves stay solid and unlit-looking. */}
-          <EffectComposer disableNormalPass multisampling={0}>
-            {/* Threshold sits above the now brightly-lit planet surfaces so
-                only the star and its corona bloom. Otherwise sunlit clay
-                blooms too and the whole frame turns milky. */}
-            <Bloom
-              intensity={0.9}
-              luminanceThreshold={0.9}
-              luminanceSmoothing={0.3}
-              mipmapBlur
-              radius={0.7}
-            />
-            {/* Light touch only — enough to focus the centre without making the
-                edges feel heavy */}
-            <Vignette offset={0.4} darkness={0.28} eskil={false} />
-          </EffectComposer>
+          {/* Post-processing — skipped on low-end devices */}
+          {sceneConfig.bloomEnabled && (
+            <EffectComposer disableNormalPass multisampling={0}>
+              <Bloom
+                intensity={0.9}
+                luminanceThreshold={0.9}
+                luminanceSmoothing={0.3}
+                mipmapBlur
+                radius={0.7}
+              />
+              <Vignette offset={0.4} darkness={0.28} eskil={false} />
+            </EffectComposer>
+          )}
 
           <OrbitControls
             ref={controlsRef}
             enabled={!modalOpen}
-            enablePan={!modalOpen}
+            enablePan={!modalOpen && !isSmallScreen}
             enableZoom={!modalOpen}
             enableRotate={!modalOpen}
-            minDistance={4}
-            maxDistance={120}
+            // Touch-friendly: enable damping so momentum scrolling feels natural
+            enableDamping
+            dampingFactor={0.08}
+            // On mobile, restrict zoom range so users can't lose the scene
+            minDistance={isSmallScreen ? 10 : 4}
+            maxDistance={isSmallScreen ? 80 : 120}
             autoRotate={!selectedPlanet && !modalOpen}
             autoRotateSpeed={0.15}
+            // Two-finger gestures for rotate + zoom on touch
+            touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
           />
         </Suspense>
       </Canvas>

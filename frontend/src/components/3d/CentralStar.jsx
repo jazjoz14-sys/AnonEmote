@@ -1,6 +1,7 @@
 import React, { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { sceneConfig } from '../../lib/device'
 
 /**
  * CentralStar — the emotional "sun" of the AnonEmote system.
@@ -43,17 +44,12 @@ export default function CentralStar() {
           lumpy clay surfaces from self-shadowing into stripes (shadow acne). */}
       <pointLight
         color="#fff4dd"
-        // Very strong: the planets should be vividly sunlit. Brightness on the
-        // day side, rather than ambient fill, is what stops the scene feeling
-        // grim while keeping a crisp terminator.
         intensity={14}
         distance={260}
-        // Near-linear falloff so the outermost planet at radius 52 is still
-        // clearly day-lit rather than dropping into darkness
         decay={1.0}
-        castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
+        castShadow={sceneConfig.shadowMapSize > 0}
+        shadow-mapSize-width={sceneConfig.shadowMapSize || 512}
+        shadow-mapSize-height={sceneConfig.shadowMapSize || 512}
         shadow-camera-near={0.8}
         shadow-camera-far={140}
         shadow-bias={-0.0008}

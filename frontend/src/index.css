@@ -48,6 +48,35 @@
   }
 }
 
+/* ── Mobile optimizations ─────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Prevent iOS zoom on input focus — keeps the 3D viewport stable */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+
+  /* Touch targets need ≥ 44px (WCAG 2.5.5 Target Size) */
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Panels take full width on small screens */
+  .glass-dark {
+    max-width: calc(100vw - 16px) !important;
+  }
+}
+
+/* Safe area insets for phones with notches / gesture bars */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 12px);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 4px;

@@ -3,8 +3,9 @@ import useAppStore from '../../store/useAppStore'
 import useDraggable from '../../hooks/useDraggable'
 import ReactionBar from './ReactionBar'
 import { apiFetch } from '../../lib/api'
+import { isSmallScreen } from '../../lib/device'
 
-const PANEL_W = 320
+const PANEL_W = isSmallScreen ? Math.min(360, window.innerWidth - 16) : 320
 
 /**
  * PlanetInfoPanel — draggable floating panel listing recent posts for the
@@ -25,10 +26,12 @@ export default function PlanetInfoPanel() {
   const { position, isDragging, dragProps, handleProps } = useDraggable({
     width: PANEL_W,
     height: 480,
-    initial: {
-      x: Math.max(12, window.innerWidth - PANEL_W - 24),
-      y: Math.max(12, window.innerHeight / 2 - 240),
-    },
+    initial: isSmallScreen
+      ? { x: 8, y: Math.max(60, window.innerHeight - 420) }
+      : {
+          x: Math.max(12, window.innerWidth - PANEL_W - 24),
+          y: Math.max(12, window.innerHeight / 2 - 240),
+        },
   })
 
   const planetPosts = useMemo(

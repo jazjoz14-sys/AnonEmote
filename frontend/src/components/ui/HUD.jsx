@@ -47,8 +47,10 @@ export default function HUD() {
 
       {notesOpen && <PrivateNotesPanel onClose={() => setNotesOpen(false)} />}
 
-      {/* Planet legend — bottom */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2 flex-wrap justify-center max-w-2xl px-4">
+      {/* Planet legend — bottom, with safe-area padding for phones with
+          gesture bars */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2
+                      flex-wrap justify-center max-w-2xl px-4 safe-bottom">
         {PLANETS.map((p) => (
           <button
             key={p.id}
@@ -63,8 +65,9 @@ export default function HUD() {
         ))}
       </div>
 
-      {/* Controls hint */}
-      <div className="absolute top-4 right-4 z-20 glass px-3 py-2 rounded-xl text-xs text-slate-500 leading-relaxed">
+      {/* Controls hint — hidden on mobile where gestures are intuitive */}
+      <div className="absolute top-4 right-4 z-20 glass px-3 py-2 rounded-xl text-xs
+                      text-slate-500 leading-relaxed hidden md:block">
         <p>🖱 Drag to rotate</p>
         <p>⚙ Scroll to zoom</p>
         <p>🪐 Click a planet to focus</p>

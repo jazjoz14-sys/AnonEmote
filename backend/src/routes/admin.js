@@ -31,6 +31,12 @@ const loginLimiter = rateLimit({
 
 /** POST /api/admin/login  { password } */
 adminRouter.post('/login', loginLimiter, async (req, res) => {
+  // Return 404 when disabled so attackers cannot distinguish "admin exists but
+  // is off" from "no admin endpoint at all".
+  if (process.env.ADMIN_ENABLED !== 'true') {
+    return res.status(404).json({ error: 'Not found' })
+  }
+
   const result = login(req.body?.password)
 
   if (!result.ok) {

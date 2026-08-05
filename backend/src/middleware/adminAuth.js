@@ -57,6 +57,13 @@ export function logout(token) {
 
 /** Express middleware guarding every admin route. */
 export function requireAdmin(req, res, next) {
+  // Kill switch — ADMIN_ENABLED must be explicitly "true".
+  // On public deployments this defaults to off, which makes the entire admin
+  // surface unreachable — even with the correct password.
+  if (process.env.ADMIN_ENABLED !== 'true') {
+    return res.status(404).json({ error: 'Not found' })
+  }
+
   if (!process.env.ADMIN_PASSWORD) {
     return res.status(503).json({
       error: 'Admin access is not configured. Set ADMIN_PASSWORD in backend/.env',
