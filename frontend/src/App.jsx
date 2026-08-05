@@ -6,6 +6,7 @@ import CheckInScreen from './screens/CheckInScreen'
 import SpaceScreen from './screens/SpaceScreen'
 import CrisisModal from './components/modals/CrisisModal'
 import PostModal from './components/modals/PostModal'
+import DoodleModal from './components/modals/DoodleModal'
 import ReportModal from './components/modals/ReportModal'
 import AdminApp from './admin/AdminApp'
 
@@ -28,8 +29,10 @@ function useIsAdminRoute() {
 export default function App() {
   const isAdmin = useIsAdminRoute()
 
-  const { phase, initSession, loadPrivateNotes, crisis, postModalOpen, reportTarget } =
-    useAppStore()
+  const {
+    phase, initSession, loadPrivateNotes,
+    crisis, postModalOpen, reportTarget, selectedPlanet,
+  } = useAppStore()
 
   // Initialize anonymous session and restore any private notes from this tab
   useEffect(() => {
@@ -50,7 +53,9 @@ export default function App() {
       {phase === 'space' && <SpaceScreen />}
 
       {/* Global overlays, layered above everything */}
-      {postModalOpen && <PostModal />}
+      {/* Modal routing: doodle planet gets the drawing canvas, others get text */}
+      {postModalOpen && selectedPlanet?.id === 'doodle' && <DoodleModal />}
+      {postModalOpen && selectedPlanet?.id !== 'doodle' && <PostModal />}
       {reportTarget && <ReportModal />}
       {crisis.open && <CrisisModal />}
     </div>

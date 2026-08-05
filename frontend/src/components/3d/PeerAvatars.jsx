@@ -84,6 +84,13 @@ function PeerAvatar({ peer }) {
         {shape === 'orb' && <icosahedronGeometry args={[1, 2]} />}
         {shape === 'prism' && <octahedronGeometry args={[1.15, 0]} />}
         {shape === 'spirit' && <capsuleGeometry args={[0.6, 0.9, 6, 12]} />}
+        {shape === 'droplet' && <sphereGeometry args={[1, 16, 12]} />}
+        {shape === 'crystal' && <dodecahedronGeometry args={[1, 0]} />}
+        {shape === 'shard' && <tetrahedronGeometry args={[1.2, 0]} />}
+        {shape === 'halo' && <torusGeometry args={[0.8, 0.3, 12, 24]} />}
+        {shape === 'knot' && <torusKnotGeometry args={[0.65, 0.22, 48, 8]} />}
+        {shape === 'nebula' && <icosahedronGeometry args={[1.1, 1]} />}
+        {shape === 'spark' && <coneGeometry args={[0.8, 1.6, 5]} />}
 
         <meshStandardMaterial
           color={auraColor}

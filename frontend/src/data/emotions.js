@@ -101,6 +101,21 @@ export const FEELINGS = [
       { id: 'unsure',     label: 'Not sure',   prompt: 'Start anywhere — it does not have to make sense.' },
     ],
   },
+  {
+    id: 'doodle',           // → doodle drift planet
+    label: 'Creative',
+    sub: 'I want to draw it instead',
+    emoji: '🎨',
+    color: '#fb923c',
+    nuances: [
+      { id: 'abstract',  label: 'Abstract',    prompt: 'Let your hand move without thinking.' },
+      { id: 'scene',     label: 'A scene',     prompt: 'Draw the place in your mind.' },
+      { id: 'emotion',   label: 'The feeling', prompt: 'What shape does it take?' },
+      { id: 'character', label: 'A creature',  prompt: 'Give the feeling a body.' },
+      { id: 'symbol',    label: 'A symbol',    prompt: 'What image keeps coming back?' },
+      { id: 'free',      label: 'Freeform',    prompt: 'No rules — just draw.' },
+    ],
+  },
 ]
 
 export const getFeelingById = (id) => FEELINGS.find((f) => f.id === id)

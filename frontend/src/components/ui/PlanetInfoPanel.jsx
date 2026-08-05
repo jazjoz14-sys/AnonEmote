@@ -116,7 +116,16 @@ export default function PlanetInfoPanel() {
                 className="glass rounded-xl px-3 py-2.5 text-sm text-slate-300"
                 style={{ borderLeft: `2px solid ${selectedPlanet.color}66` }}
               >
-                <p className="break-words">{post.content}</p>
+                {post.drawing ? (
+                  <img
+                    src={post.drawing}
+                    alt="Anonymous doodle"
+                    className="w-full rounded-lg"
+                    loading="lazy"
+                  />
+                ) : (
+                  <p className="break-words">{post.content}</p>
+                )}
                 <p className="text-xs text-slate-600 mt-1">
                   {new Date(post.created_at).toLocaleTimeString([], {
                     hour: '2-digit', minute: '2-digit',
@@ -210,7 +219,16 @@ export default function PlanetInfoPanel() {
               className="glass rounded-xl px-3 py-2.5 text-sm text-slate-300 leading-relaxed"
               style={{ borderLeft: `2px solid ${selectedPlanet.color}66` }}
             >
-              <p className="break-words">{post.content}</p>
+              {post.drawing ? (
+                <img
+                  src={post.drawing}
+                  alt="Anonymous doodle"
+                  className="w-full rounded-lg"
+                  loading="lazy"
+                />
+              ) : (
+                <p className="break-words">{post.content}</p>
+              )}
               <p className="text-xs text-slate-600 mt-1">
                 {new Date(post.created_at).toLocaleTimeString([], {
                   hour: '2-digit',

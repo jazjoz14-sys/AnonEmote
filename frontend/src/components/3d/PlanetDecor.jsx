@@ -725,6 +725,103 @@ function NeutralDecor({ planet }) {
   )
 }
 
+/* ══ DOODLE DRIFT — paintbrushes, palette, floating frames, splats ══════════ */
+
+function DoodleDecor({ planet }) {
+  const spinRef = useRef()
+  const r = planet.size
+  const splats = useMemo(() => scatter(6, r * 0.99, 77), [r])
+
+  useFrame((s) => {
+    if (spinRef.current) spinRef.current.rotation.y = s.clock.elapsedTime * 0.15
+  })
+
+  return (
+    <group>
+      <group ref={spinRef}>
+        {/* Paint splats on surface */}
+        {splats.map((p, i) => {
+          const { position, quaternion } = surfaceProps(p)
+          const splatColors = ['#F87171', '#FBBF24', '#34D399', '#60A5FA', '#A78BFA', '#FB923C']
+          return (
+            <mesh key={`sp${i}`} position={position} quaternion={quaternion} scale={[1, 0.2, 1]}>
+              <sphereGeometry args={[r * (0.12 + (i % 3) * 0.04), 10, 8]} />
+              <meshStandardMaterial color={splatColors[i % splatColors.length]} {...CLAY} />
+            </mesh>
+          )
+        })}
+
+        {/* Paintbrush sticking out of the surface */}
+        {useMemo(() => scatter(3, r * 0.98, 91), [r]).map((p, i) => {
+          const { position, quaternion } = surfaceProps(p)
+          return (
+            <group key={`br${i}`} position={position} quaternion={quaternion}>
+              <mesh position={[0, r * 0.25, 0]}>
+                <cylinderGeometry args={[r * 0.02, r * 0.025, r * 0.5, 6]} />
+                <meshStandardMaterial color="#92400e" {...CLAY} />
+              </mesh>
+              <mesh position={[0, r * 0.48, 0]} scale={[1, 0.6, 1]}>
+                <coneGeometry args={[r * 0.06, r * 0.15, 6]} />
+                <meshStandardMaterial
+                  color={['#F87171', '#60A5FA', '#FBBF24'][i % 3]}
+                  {...CLAY}
+                />
+              </mesh>
+            </group>
+          )
+        })}
+      </group>
+
+      {/* Floating picture frames */}
+      {[0, 1, 2].map((i) => {
+        const a = i * 2.2
+        return (
+          <FloatingProp
+            key={`fr${i}`}
+            position={new THREE.Vector3(
+              Math.cos(a) * r * 2.0,
+              r * (0.2 + i * 0.35),
+              Math.sin(a) * r * 2.0
+            )}
+            speed={0.4 + i * 0.12}
+            amount={0.2}
+          >
+            <group>
+              {/* Frame border */}
+              <mesh>
+                <boxGeometry args={[r * 0.5, r * 0.4, r * 0.04]} />
+                <meshStandardMaterial color="#78350f" {...CLAY} />
+              </mesh>
+              {/* Canvas inside */}
+              <mesh position={[0, 0, r * 0.025]}>
+                <boxGeometry args={[r * 0.38, r * 0.28, r * 0.01]} />
+                <meshStandardMaterial
+                  color={['#fef3c7', '#e0f2fe', '#fce7f3'][i]}
+                  {...CLAY}
+                />
+              </mesh>
+            </group>
+          </FloatingProp>
+        )
+      })}
+
+      {/* Orbiting colour chips */}
+      <OrbitingRing count={10} radius={r * 2.3} tilt={0.6} speed={0.3}>
+        {(i) => (
+          <mesh>
+            <boxGeometry args={[r * 0.12, r * 0.12, r * 0.04]} />
+            <meshStandardMaterial
+              color={['#F87171','#FB923C','#FBBF24','#A3E635','#34D399',
+                      '#22D3EE','#60A5FA','#A78BFA','#F472B6','#FFFFFF'][i]}
+              {...CLAY}
+            />
+          </mesh>
+        )}
+      </OrbitingRing>
+    </group>
+  )
+}
+
 /* ══ dispatcher ═════════════════════════════════════════════════════════════ */
 
 const DECOR = {
@@ -734,6 +831,7 @@ const DECOR = {
   grief: GriefDecor,
   anxiety: AnxietyDecor,
   neutral: NeutralDecor,
+  doodle: DoodleDecor,
 }
 
 export default function PlanetDecor({ planet }) {

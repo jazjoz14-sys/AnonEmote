@@ -71,20 +71,17 @@ export default function AvatarCustomizer() {
 
         {/* ── Shape ─────────────────────────────────────────────────────── */}
         <Section label="Form">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-5 gap-1.5">
             {SHAPES.map((s) => (
               <OptionButton
                 key={s.id}
                 selected={avatar.shape === s.id}
                 onClick={() => setAvatar({ shape: s.id })}
                 accent={avatar.auraColor}
-                className="flex flex-col items-center gap-1 py-3"
+                className="flex flex-col items-center gap-0.5 py-2.5 px-1"
               >
-                <span className="text-lg leading-none">{s.icon}</span>
-                <span className="font-medium">{s.label}</span>
-                <span className="text-[10px] text-slate-500 leading-tight text-center">
-                  {s.hint}
-                </span>
+                <span className="text-base leading-none">{s.icon}</span>
+                <span className="font-medium text-[10px] leading-tight">{s.label}</span>
               </OptionButton>
             ))}
           </div>
@@ -92,7 +89,7 @@ export default function AvatarCustomizer() {
 
         {/* ── Aura colour ───────────────────────────────────────────────── */}
         <Section label="Aura">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {AURA_COLORS.map((c) => {
               const selected = avatar.auraColor === c.hex
               return (
@@ -102,21 +99,21 @@ export default function AvatarCustomizer() {
                   title={c.label}
                   aria-label={c.label}
                   aria-pressed={selected}
-                  className={`w-10 h-10 rounded-full transition-all duration-200
-                              focus:outline-none focus:ring-2 focus:ring-offset-2
+                  className={`w-8 h-8 rounded-full transition-all duration-200
+                              focus:outline-none focus:ring-2 focus:ring-offset-1
                               focus:ring-offset-transparent focus:ring-white/50
                               ${selected
-                                ? 'scale-110 ring-2 ring-white shadow-lg'
-                                : 'ring-1 ring-white/20 hover:scale-105'}`}
+                                ? 'scale-125 ring-2 ring-white shadow-lg'
+                                : 'ring-1 ring-white/20 hover:scale-110'}`}
                   style={{
                     backgroundColor: c.hex,
-                    boxShadow: selected ? `0 0 18px ${c.hex}88` : undefined,
+                    boxShadow: selected ? `0 0 14px ${c.hex}88` : undefined,
                   }}
                 />
               )
             })}
           </div>
-          <span className="text-[11px] text-slate-500">
+          <span className="text-[10px] text-slate-500">
             {AURA_COLORS.find((c) => c.hex === avatar.auraColor)?.label || 'Custom'}
           </span>
         </Section>

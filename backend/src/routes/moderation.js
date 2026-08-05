@@ -92,9 +92,27 @@ moderationRouter.post('/', limiter, async (req, res) => {
     return res.status(500).json({ error: 'Database not configured.' })
   }
 
+  // Build the insert payload. Doodle planet posts carry a `drawing` field
+  // (base64 data URL) instead of meaningful text content.
+  const insertPayload = {
+    content: text.trim(),
+    planet_id: pid,
+    session_id: sid,
+  }
+
+  // Attach drawing if provided (only allowed on the doodle planet)
+  if (req.body.drawing && pid === 'doodle') {
+    const drawingData = String(req.body.drawing)
+    // Basic validation: must be a PNG data URL, max ~500KB
+    if (!drawingData.startsWith('data:image/png;base64,') || drawingData.length > 700000) {
+      return res.status(400).json({ error: 'Invalid drawing data.' })
+    }
+    insertPayload.drawing = drawingData
+  }
+
   const { data, error } = await supabase
     .from('posts')
-    .insert({ content: text.trim(), planet_id: pid, session_id: sid })
+    .insert(insertPayload)
     .select()
     .single()
 

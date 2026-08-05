@@ -88,6 +88,13 @@ export default function UserAvatar({ preview = false }) {
         {shape === 'orb' && <icosahedronGeometry args={[1, 2]} />}
         {shape === 'prism' && <octahedronGeometry args={[1.15, 0]} />}
         {shape === 'spirit' && <capsuleGeometry args={[0.6, 0.9, 8, 16]} />}
+        {shape === 'droplet' && <sphereGeometry args={[1, 24, 16]} />}
+        {shape === 'crystal' && <dodecahedronGeometry args={[1, 0]} />}
+        {shape === 'shard' && <tetrahedronGeometry args={[1.2, 0]} />}
+        {shape === 'halo' && <torusGeometry args={[0.8, 0.3, 16, 32]} />}
+        {shape === 'knot' && <torusKnotGeometry args={[0.65, 0.22, 80, 12]} />}
+        {shape === 'nebula' && <icosahedronGeometry args={[1.1, 1]} />}
+        {shape === 'spark' && <coneGeometry args={[0.8, 1.6, 5]} />}
 
         <meshStandardMaterial
           color={auraColor}
@@ -120,6 +127,18 @@ export default function UserAvatar({ preview = false }) {
           speed={0.3}
           opacity={0.7}
           color={auraColor}
+        />
+      )}
+
+      {particles === 'firefly' && (
+        <Sparkles
+          count={preview ? 20 : 12}
+          scale={s * 6}
+          size={preview ? 5 : 3.5}
+          speed={0.12}
+          opacity={0.9}
+          color={auraColor}
+          noise={2}
         />
       )}
 
