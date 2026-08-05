@@ -11,7 +11,7 @@ import PrivateNotesPanel from './PrivateNotesPanel'
  * On mobile: compact top bar, bottom planet strip with larger touch targets,
  *            no controls hint, no floating buttons that overlap the 3D scene.
  */
-export default function HUD() {
+export default function HUD({ peerCount = 0 }) {
   const { setPhase, sessionId, setSelectedPlanet, privateNotes } = useAppStore()
   const [notesOpen, setNotesOpen] = useState(false)
 
@@ -55,6 +55,16 @@ export default function HUD() {
           <span className="text-[10px] md:text-xs text-slate-400 font-mono">
             {shortId}
           </span>
+          {/* Online indicator */}
+          {peerCount > 0 && (
+            <>
+              <span className="w-px h-3 bg-white/10" />
+              <span className="flex items-center gap-1 text-[10px] text-emerald-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {peerCount + 1}
+              </span>
+            </>
+          )}
         </div>
 
         {/* Right: controls hint (desktop only) */}

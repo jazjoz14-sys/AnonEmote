@@ -91,15 +91,18 @@ export default function ReplyThread({ post, accentColor }) {
 
   return (
     <div className="mt-2 flex flex-col gap-1.5">
-      {/* Toggle */}
+      {/* Toggle — more prominent when no replies exist yet so it's discoverable */}
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="text-xs text-slate-500 hover:text-slate-300 transition-colors
-                   self-start px-1"
+        className="text-xs transition-colors self-start px-1 py-0.5 rounded
+                   hover:bg-white/5"
+        style={{ color: accentColor || '#10b981' }}
       >
         {expanded
           ? '▾ Hide replies'
-          : `▸ Replies${replies.length > 0 ? ` (${replies.length})` : ''}`}
+          : replies.length > 0
+            ? `▸ ${replies.length} ${replies.length === 1 ? 'reply' : 'replies'}`
+            : '💬 Offer advice'}
       </button>
 
       {expanded && (

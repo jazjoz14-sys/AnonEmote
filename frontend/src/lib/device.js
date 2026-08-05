@@ -20,43 +20,42 @@ export const isLowEnd = isMobile || isSmallScreen
 /**
  * Scene quality tier.
  *
- *   'high'   — desktop with a real GPU
- *   'medium' — tablet or low-res desktop
+ *   'high'   — desktop with a real GPU (NVIDIA, known-stable AMD)
+ *   'medium' — tablet or AMD ANGLE (cube shadows are unstable)
  *   'low'    — phone or very small viewport
  */
 export const qualityTier = isSmallScreen
   ? 'low'
   : isMobile
     ? 'medium'
-    : 'high'
+    : 'medium'  // Default to medium until we can confirm shadows are stable
 
 /**
  * Derived scene parameters that scale with quality tier.
- * Components import these and use them at creation time.
  */
 export const SCENE_CONFIG = {
   high: {
     starCount: 3500,
-    planetDetail: 4,       // icosahedron subdivisions
+    planetDetail: 4,
     decorEnabled: true,
     shadowMapSize: 1024,
     bloomEnabled: true,
     dpr: [1, 1.5],
   },
   medium: {
-    starCount: 1800,
+    starCount: 2500,
     planetDetail: 3,
     decorEnabled: true,
-    shadowMapSize: 512,
+    shadowMapSize: 0,      // shadows disabled — AMD ANGLE context loss
     bloomEnabled: true,
     dpr: [1, 1.25],
   },
   low: {
     starCount: 800,
     planetDetail: 2,
-    decorEnabled: false,   // decor props are the most expensive part
-    shadowMapSize: 0,      // no shadows on phones
-    bloomEnabled: false,   // no post-processing on phones
+    decorEnabled: false,
+    shadowMapSize: 0,
+    bloomEnabled: false,
     dpr: [1, 1],
   },
 }

@@ -57,9 +57,9 @@ export default function CentralStar() {
         shadow-radius={4}
       />
 
-      {/* Core — emissive, never shadowed */}
+      {/* Core — larger so it reads as a proper star relative to the planets */}
       <mesh ref={meshRef}>
-        <icosahedronGeometry args={[2.2, 4]} />
+        <icosahedronGeometry args={[5.5, 4]} />
         <meshStandardMaterial
           color="#fff8e7"
           emissive="#fde68a"
@@ -72,7 +72,7 @@ export default function CentralStar() {
 
       {/* Inner glow shell */}
       <mesh ref={glowRef}>
-        <sphereGeometry args={[3.0, 24, 24]} />
+        <sphereGeometry args={[7.2, 24, 24]} />
         <meshBasicMaterial
           color="#fde68a"
           transparent
@@ -82,13 +82,13 @@ export default function CentralStar() {
         />
       </mesh>
 
-      {/* Wide outer corona — sells the light bloom */}
+      {/* Wide outer corona */}
       <mesh ref={coronaRef}>
-        <sphereGeometry args={[5.5, 20, 20]} />
+        <sphereGeometry args={[10, 20, 20]} />
         <meshBasicMaterial
           color="#f59e0b"
           transparent
-          opacity={0.05}
+          opacity={0.04}
           depthWrite={false}
           side={THREE.BackSide}
         />

@@ -75,7 +75,7 @@ export function makeClayBlob(radius, detail = 4, lumpiness = 0.06, seed = 1) {
     v.fromBufferAttribute(pos, i)
     const dir = v.clone().normalize()
 
-    // Two frequencies: broad dents plus finer thumb-press texture
+      // Two frequencies: broad dents plus finer thumb-press texture
     const broad = smoothNoise(dir.x * 2.2, dir.y * 2.2, dir.z * 2.2, seed) - 0.5
     const fine = smoothNoise(dir.x * 6.0, dir.y * 6.0, dir.z * 6.0, seed + 7) - 0.5
 

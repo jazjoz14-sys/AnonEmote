@@ -6,6 +6,8 @@ import * as THREE from 'three'
 import useAppStore from '../store/useAppStore'
 import StarSystem from '../components/3d/StarSystem'
 import GalacticBackdrop from '../components/3d/GalacticBackdrop'
+import PeerAvatars from '../components/3d/PeerAvatars'
+import usePresence from '../hooks/usePresence'
 import { sceneConfig, isSmallScreen } from '../lib/device'
 import HUD from '../components/ui/HUD'
 import PlanetInfoPanel from '../components/ui/PlanetInfoPanel'
@@ -194,6 +196,9 @@ export default function SpaceScreen() {
   const controlsRef = useRef()
   const [contextLost, setContextLost] = useState(false)
 
+  // Broadcast our presence and receive other users' avatar states
+  const { peers } = usePresence()
+
   // Only *blocking* dialogs freeze the scene. The broadcast composer is a
   // draggable floating panel, so the star system stays navigable behind it.
   const modalOpen = crisis.open || !!reportTarget
@@ -313,6 +318,9 @@ export default function SpaceScreen() {
 
           <StarSystem />
 
+          {/* Other users' avatars — rendered from Supabase Presence */}
+          <PeerAvatars peers={peers} />
+
           <CameraRig controlsRef={controlsRef} modalOpen={modalOpen} />
 
           <ContextLossGuard onLost={(lost = true) => setContextLost(lost)} />
@@ -351,7 +359,7 @@ export default function SpaceScreen() {
         </Suspense>
       </Canvas>
 
-      <HUD />
+      <HUD peerCount={peers.length} />
       {selectedPlanet && <PlanetInfoPanel />}
 
       {/* Visible recovery prompt instead of a silently frozen scene */}
