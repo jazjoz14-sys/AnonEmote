@@ -110,24 +110,35 @@ export default function PostModal() {
     }
   }
 
-  return (
-    <div
-      {...dragProps}
-      className="fixed z-50 glass-dark rounded-3xl flex flex-col gap-4 p-5
-                 shadow-2xl shadow-black/60"
-      style={{
+  // On mobile: fixed bottom sheet, no dragging needed
+  const wrapperClass = isSmallScreen
+    ? 'fixed bottom-0 left-0 right-0 z-50 glass-dark rounded-t-3xl flex flex-col gap-4 p-4 safe-bottom animate-slide-up'
+    : 'fixed z-50 glass-dark rounded-3xl flex flex-col gap-4 p-5 shadow-2xl shadow-black/60'
+
+  const wrapperStyle = isSmallScreen
+    ? {
+        maxHeight: '80vh',
+        border: `1px solid ${selectedPlanet?.color}44`,
+        borderBottom: 'none',
+      }
+    : {
         ...dragProps.style,
         left: position.x,
         top: position.y,
         width: PANEL_W,
         maxWidth: 'calc(100vw - 24px)',
         border: `1px solid ${selectedPlanet?.color}44`,
-        // Lift the panel while it's being moved
         boxShadow: isDragging
           ? '0 30px 60px -12px rgba(0,0,0,0.9)'
           : '0 20px 40px -12px rgba(0,0,0,0.7)',
         cursor: isDragging ? 'grabbing' : 'default',
-      }}
+      }
+
+  return (
+    <div
+      {...(isSmallScreen ? {} : dragProps)}
+      className={wrapperClass}
+      style={wrapperStyle}
       role="dialog"
       aria-label={`Broadcast to ${selectedPlanet?.label}`}
     >

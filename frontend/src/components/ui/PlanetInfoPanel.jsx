@@ -61,6 +61,76 @@ export default function PlanetInfoPanel() {
 
   if (!selectedPlanet) return null
 
+  // On mobile: full-width bottom sheet. On desktop: draggable side panel.
+  if (isSmallScreen) {
+    return (
+      <div
+        className="fixed bottom-0 left-0 right-0 z-30 glass-dark rounded-t-3xl
+                   p-4 flex flex-col gap-3 safe-bottom animate-slide-up"
+        style={{
+          maxHeight: '65vh',
+          border: `1px solid ${selectedPlanet.color}44`,
+          borderBottom: 'none',
+        }}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-xl">{selectedPlanet.emoji}</span>
+            <div className="min-w-0">
+              <h3 className="font-bold text-white text-sm">{selectedPlanet.label}</h3>
+              <p className="text-xs text-slate-400 line-clamp-1">{selectedPlanet.description}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setSelectedPlanet(null)}
+            className="text-slate-500 hover:text-white text-lg px-2 py-1"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Broadcast */}
+        <button
+          onClick={() => setPostModalOpen(true)}
+          className="w-full py-3 rounded-xl font-semibold text-white text-sm
+                     bg-gradient-to-r from-violet-600 to-indigo-600
+                     active:scale-[0.98] transition-all"
+          style={{ boxShadow: `0 0 16px ${selectedPlanet.color}44` }}
+        >
+          + Broadcast to {selectedPlanet.label}
+        </button>
+
+        {/* Posts */}
+        <div className="flex-1 overflow-y-auto flex flex-col gap-2 min-h-0">
+          {planetPosts.length === 0 ? (
+            <p className="text-slate-500 text-sm text-center py-4">
+              No posts yet. Be the first to share.
+            </p>
+          ) : (
+            planetPosts.map((post) => (
+              <div
+                key={post.id}
+                className="glass rounded-xl px-3 py-2.5 text-sm text-slate-300"
+                style={{ borderLeft: `2px solid ${selectedPlanet.color}66` }}
+              >
+                <p className="break-words">{post.content}</p>
+                <p className="text-xs text-slate-600 mt-1">
+                  {new Date(post.created_at).toLocaleTimeString([], {
+                    hour: '2-digit', minute: '2-digit',
+                  })}
+                </p>
+                <ReactionBar post={post} accentColor={selectedPlanet.color} />
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Desktop: draggable floating panel
   return (
     <div
       {...dragProps}
