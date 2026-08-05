@@ -58,7 +58,10 @@ app.use(cors({
   methods: ['GET', 'POST'],
   credentials: false,
 }))
-app.use(express.json({ limit: '16kb' }))
+// Drawings are base64-encoded PNGs that can reach 200–400KB, so the body
+// limit must accommodate them. 1MB covers a generous canvas without opening
+// the door to arbitrarily large payloads.
+app.use(express.json({ limit: '1mb' }))
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api/moderate', moderationRouter)
