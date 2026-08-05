@@ -2,6 +2,7 @@ import React, { useMemo, useEffect } from 'react'
 import useAppStore from '../../store/useAppStore'
 import useDraggable from '../../hooks/useDraggable'
 import ReactionBar from './ReactionBar'
+import ReplyThread from './ReplyThread'
 import { apiFetch } from '../../lib/api'
 import { isSmallScreen } from '../../lib/device'
 
@@ -122,6 +123,7 @@ export default function PlanetInfoPanel() {
                   })}
                 </p>
                 <ReactionBar post={post} accentColor={selectedPlanet.color} />
+                <ReplyThread post={post} accentColor={selectedPlanet.color} />
               </div>
             ))
           )}
@@ -216,6 +218,7 @@ export default function PlanetInfoPanel() {
                 })}
               </p>
               <ReactionBar post={post} accentColor={selectedPlanet.color} />
+              <ReplyThread post={post} accentColor={selectedPlanet.color} />
             </div>
           ))
         )}

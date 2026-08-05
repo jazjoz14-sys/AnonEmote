@@ -14,6 +14,7 @@ import { moderationRouter } from './routes/moderation.js'
 import { postsRouter } from './routes/posts.js'
 import { reactionsRouter } from './routes/reactions.js'
 import { reportsRouter } from './routes/reports.js'
+import { repliesRouter } from './routes/replies.js'
 import { adminRouter } from './routes/admin.js'
 
 const app = express()
@@ -64,6 +65,7 @@ app.use('/api/moderate', moderationRouter)
 app.use('/api/posts', postsRouter)
 app.use('/api/reactions', reactionsRouter)
 app.use('/api/reports', reportsRouter)
+app.use('/api/replies', repliesRouter)
 app.use('/api/admin', adminRouter)
 
 // Health check
