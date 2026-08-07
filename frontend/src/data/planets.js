@@ -122,12 +122,12 @@ const BASE_PLANETS = [
     label: 'Doodle Drift',
     emoji: '🎨',
     description: 'Draw what you feel — no words needed.',
-    color: '#fb923c',
-    emissive: '#7c2d12',
+    color: '#f5f5f5',
+    emissive: '#e5e5e5',
     orbitRadius: 62,
     size: 1.8,
     position: [58, 0, -22],
-    ringColor: 'rgba(251,146,60,0.3)',
+    ringColor: 'rgba(245,245,245,0.3)',
   },
 ]
 

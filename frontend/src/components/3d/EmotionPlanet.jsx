@@ -4,6 +4,7 @@ import { Html, Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
 import useAppStore from '../../store/useAppStore'
 import PlanetDecor from './PlanetDecor'
+import DoodlePlanetSkin from './DoodlePlanetSkin'
 import { CLAY, makeClayBlob } from './clay'
 import { sceneConfig } from '../../lib/device'
 
@@ -106,10 +107,10 @@ export default function EmotionPlanet({ planet }) {
         />
       </mesh>
 
-      {/* Planet body — hand-pressed clay blob rather than a perfect sphere */}
+      {/* Planet body — doodle is a smooth white sphere, others are lumpy clay */}
       <mesh
         ref={meshRef}
-        geometry={clayGeo}
+        geometry={planet.id === 'doodle' ? undefined : clayGeo}
         onClick={handleClick}
         onPointerOver={() => {
           if (modalOpen) return
@@ -122,22 +123,38 @@ export default function EmotionPlanet({ planet }) {
         }}
         castShadow
         receiveShadow
+        visible={planet.id !== 'doodle'}
       >
-        {/* Emissive acts as the night-side floor: it is unaffected by light
-            direction, so the dark hemisphere still shows the planet's own hue
-            instead of turning black, while the star-lit hemisphere reads much
-            brighter on top of it. Keeping it modest preserves the terminator. */}
+        {planet.id === 'doodle' && <sphereGeometry args={[planet.size, 48, 32]} />}
         <meshStandardMaterial
           color={planet.color}
           emissive={planet.color}
           emissiveIntensity={isSelected ? 0.34 : (hovered ? 0.28 : 0.22)}
-          {...CLAY}
+          roughness={CLAY.roughness}
+          metalness={0}
         />
       </mesh>
 
       {/* Emotion-specific clay props — disabled on low-end devices to
           preserve framerate and avoid context loss */}
       {sceneConfig.decorEnabled && <PlanetDecor planet={planet} />}
+
+      {/* Doodle planet: the skin IS the planet body — drawings on the surface */}
+      {planet.id === 'doodle' && (
+        <DoodlePlanetSkin
+          planetSize={planet.size}
+          onClick={handleClick}
+          onPointerOver={() => {
+            if (modalOpen) return
+            setHovered(true)
+            document.body.style.cursor = 'pointer'
+          }}
+          onPointerOut={() => {
+            setHovered(false)
+            document.body.style.cursor = 'default'
+          }}
+        />
+      )}
 
       {/* Selection ring around chosen planet */}
       {isSelected && (
@@ -164,8 +181,9 @@ export default function EmotionPlanet({ planet }) {
         </Text>
       </Billboard>
 
-      {/* Floating post snippets orbiting the planet — hidden while a modal is open */}
-      {!modalOpen && planetPosts.map((post, i) => {
+      {/* Floating post snippets — hidden when a modal is blocking, and
+          replaced by surface texture on the doodle planet */}
+      {!modalOpen && planet.id !== 'doodle' && planetPosts.map((post, i) => {
         const snippetAngle = (i / 5) * Math.PI * 2
         const r = planet.size + 2.5
         return (

@@ -45,7 +45,9 @@ export default function App() {
   if (isAdmin) return <AdminApp />
 
   return (
-    <div className="relative w-full h-full overflow-hidden bg-space-900">
+    <div className={`relative w-full h-full bg-space-900
+                     ${phase === 'space' ? 'overflow-hidden' : 'overflow-y-auto overflow-x-hidden'}`}
+         style={{ height: '100%' }}>
       {/* Phase-based screen rendering */}
       {phase === 'landing' && <LandingScreen />}
       {phase === 'avatar' && <AvatarScreen />}

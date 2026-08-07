@@ -1,9 +1,9 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react'
 
 const COLORS = [
-  '#FFFFFF', '#F87171', '#FB923C', '#FBBF24', '#A3E635',
+  '#1F2937', '#F87171', '#FB923C', '#FBBF24', '#A3E635',
   '#34D399', '#22D3EE', '#60A5FA', '#A78BFA', '#F472B6',
-  '#1F2937', '#6B7280',
+  '#000000', '#6B7280',
 ]
 
 const BRUSH_SIZES = [2, 5, 10, 18]
@@ -20,17 +20,17 @@ export default function DrawingCanvas({ width = 360, height = 360, onChange }) {
   const isDrawing = useRef(false)
   const lastPos = useRef({ x: 0, y: 0 })
 
-  const [color, setColor] = useState('#FFFFFF')
+  const [color, setColor] = useState('#1F2937')
   const [brushSize, setBrushSize] = useState(5)
   const [erasing, setErasing] = useState(false)
   const [hasContent, setHasContent] = useState(false)
 
-  // Setup canvas with dark background
+  // Setup canvas with white background to match the planet surface
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
-    ctx.fillStyle = '#1a1a2e'
+    ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, width, height)
   }, [width, height])
 
@@ -69,7 +69,7 @@ export default function DrawingCanvas({ width = 360, height = 360, onChange }) {
     ctx.beginPath()
     ctx.moveTo(lastPos.current.x, lastPos.current.y)
     ctx.lineTo(pos.x, pos.y)
-    ctx.strokeStyle = erasing ? '#1a1a2e' : color
+    ctx.strokeStyle = erasing ? '#ffffff' : color
     ctx.lineWidth = brushSize
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
@@ -92,7 +92,7 @@ export default function DrawingCanvas({ width = 360, height = 360, onChange }) {
   const clearCanvas = useCallback(() => {
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
-    ctx.fillStyle = '#1a1a2e'
+    ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, width, height)
     setHasContent(false)
     if (onChange) onChange(null)

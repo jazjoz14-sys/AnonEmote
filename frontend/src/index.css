@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* JS-driven fallback for browsers without dvh support (set in main.jsx) */
+    --app-height: 100vh;
+  }
+
   * {
     box-sizing: border-box;
     margin: 0;
@@ -13,14 +18,33 @@
     background: #0a0a1a;
     color: #e2e8f0;
     font-family: 'Inter', ui-sans-serif, system-ui;
-    overflow: hidden;
+    /* Three-tier height fix:
+       1. 100vh — baseline (desktop always correct)
+       2. 100dvh — modern mobile browsers (excludes chrome)
+       3. var(--app-height) — JS fallback for older mobile browsers */
     height: 100vh;
+    height: 100dvh;
     width: 100vw;
+    overflow: hidden;
+    overscroll-behavior: none;
+    /* Prevent pull-to-refresh gesture on Chrome Android */
+    touch-action: manipulation;
   }
 
   #root {
     height: 100vh;
+    height: 100dvh;
     width: 100vw;
+    overflow: hidden;
+    position: fixed;
+    inset: 0;
+  }
+
+  /* Fallback for browsers that don't support dvh (older Safari/Chrome) */
+  @supports not (height: 100dvh) {
+    body, #root {
+      height: var(--app-height, 100vh);
+    }
   }
 }
 
