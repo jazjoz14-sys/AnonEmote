@@ -50,9 +50,11 @@ export default function EmotionPlanet({ planet }) {
 
   useFrame((state, delta) => {
     const t = state.clock.elapsedTime
-    // Delta-based so orbit speed is identical on a 60Hz and a 144Hz display.
-    // orbitSpeed is expressed in radians per second.
-    angleRef.current += planet.orbitSpeed * delta
+    // Freeze orbit when this planet is selected — prevents the camera from
+    // having to chase the planet as it drifts away.
+    if (!isSelected) {
+      angleRef.current += planet.orbitSpeed * delta
+    }
 
     if (orbitRef.current) {
       // Move planet along its circular orbit

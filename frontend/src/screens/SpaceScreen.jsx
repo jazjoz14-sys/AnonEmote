@@ -124,8 +124,9 @@ function CameraRig({ controlsRef, modalOpen }) {
     // ── Phase: tracking (free orbit, pivot follows planet) ──────────────────
     if (phase.current === 'tracking') {
       if (controlsRef.current) {
-        // Softly move the pivot to keep planet centred as it orbits
-        controlsRef.current.target.lerp(_desiredTarget, 0.06)
+        // Planet is frozen when selected, so target barely moves — just sync
+        // in case the camera arrived slightly off-centre
+        controlsRef.current.target.lerp(_desiredTarget, 0.1)
         controlsRef.current.update()
       }
     }

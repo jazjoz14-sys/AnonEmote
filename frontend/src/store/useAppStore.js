@@ -39,7 +39,12 @@ const useAppStore = create((set, get) => ({
 
   // ── Selected Planet ───────────────────────────────────────────────────────
   selectedPlanet: null,
-  setSelectedPlanet: (planet) => set({ selectedPlanet: planet }),
+  setSelectedPlanet: (planet) => set({
+    selectedPlanet: planet,
+    // Immediately open the composer when a planet is selected so users can
+    // start writing without an extra tap.
+    postModalOpen: !!planet,
+  }),
 
   // ── Live planet world positions (written every frame by EmotionPlanet) ────
   // { [planetId]: THREE.Vector3 } — plain object, not reactive (read via getState)
