@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import useAppStore from '../../store/useAppStore'
 import useDraggable from '../../hooks/useDraggable'
 import { apiFetch } from '../../lib/api'
@@ -6,6 +6,58 @@ import { isSmallScreen } from '../../lib/device'
 
 const MAX_CHARS = 280
 const PANEL_W = isSmallScreen ? Math.min(440, window.innerWidth - 16) : 480
+
+/**
+ * Rocket animation overlay — shown during moderation check.
+ */
+function RocketAnimation({ phase }) {
+  // phase: 'rumble' | 'launch' | 'fail'
+  const animClass = phase === 'launch'
+    ? 'animate-rocket-launch'
+    : phase === 'fail'
+      ? 'animate-rocket-fail'
+      : 'animate-rocket-rumble'
+
+  return (
+    <div className={`flex flex-col items-center justify-center gap-4 py-8 ${animClass}`}>
+      {/* Rocket body */}
+      <div className="relative flex flex-col items-center">
+        {/* Nose cone */}
+        <div className="w-0 h-0 border-l-[12px] border-r-[12px] border-b-[20px]
+                        border-l-transparent border-r-transparent border-b-white" />
+        {/* Body */}
+        <div className="w-6 h-16 bg-gradient-to-b from-white to-slate-300 rounded-sm" />
+        {/* Fins */}
+        <div className="flex">
+          <div className="w-3 h-4 bg-violet-400 -skew-x-12 rounded-b-sm" />
+          <div className="w-6" />
+          <div className="w-3 h-4 bg-violet-400 skew-x-12 rounded-b-sm" />
+        </div>
+        {/* Exhaust flame — only during rumble */}
+        {phase === 'rumble' && (
+          <div className="flex flex-col items-center animate-exhaust">
+            <div className="w-3 h-6 bg-gradient-to-b from-orange-400 via-orange-500 to-transparent rounded-b-full opacity-90" />
+            <div className="w-2 h-4 bg-gradient-to-b from-yellow-300 to-transparent rounded-b-full -mt-3 opacity-70" />
+          </div>
+        )}
+        {/* Big exhaust on launch */}
+        {phase === 'launch' && (
+          <div className="flex flex-col items-center">
+            <div className="w-5 h-12 bg-gradient-to-b from-orange-400 via-red-500 to-transparent rounded-b-full opacity-95" />
+            <div className="w-3 h-8 bg-gradient-to-b from-yellow-200 to-transparent rounded-b-full -mt-6 opacity-80" />
+          </div>
+        )}
+      </div>
+
+      {/* Status text */}
+      <p className="text-xs tracking-[0.15em] uppercase text-slate-400 mt-2">
+        {phase === 'rumble' && 'Scanning your message...'}
+        {phase === 'launch' && 'Broadcast successful!'}
+        {phase === 'fail' && 'Launch failed'}
+      </p>
+    </div>
+  )
+}
 
 /**
  * PostModal — a draggable floating composer panel.
@@ -45,12 +97,14 @@ export default function PostModal() {
   const [text, setText] = useState(() => crisis?.draft || '')
   const [status, setStatus] = useState('idle') // idle | checking | blocked | success | error
   const [errorMsg, setErrorMsg] = useState('')
+  const [rocketPhase, setRocketPhase] = useState(null) // null | 'rumble' | 'launch' | 'fail'
 
   const remaining = MAX_CHARS - text.length
 
   const handleSubmit = async () => {
     if (!text.trim() || status === 'checking') return
     setStatus('checking')
+    setRocketPhase('rumble')
     setErrorMsg('')
 
     try {
@@ -65,35 +119,49 @@ export default function PostModal() {
 
       const data = await res.json()
 
-      // Crisis detected. Hand the draft to the crisis flow rather than
-      // discarding it — the user decides what happens to their own words.
+      // Crisis detected
       if (res.status === 403) {
-        setStatus('idle')
-        openCrisis({ draft: text, referral: data.referral })
-        setPostModalOpen(false)
+        setRocketPhase('fail')
+        setTimeout(() => {
+          setStatus('idle')
+          setRocketPhase(null)
+          openCrisis({ draft: text, referral: data.referral })
+          setPostModalOpen(false)
+        }, 700)
         return
       }
 
       if (res.status === 406) {
-        setStatus('blocked')
-        setErrorMsg(data.error || 'Your message was flagged and cannot be posted.')
+        setRocketPhase('fail')
+        setTimeout(() => {
+          setStatus('blocked')
+          setRocketPhase(null)
+          setErrorMsg(data.error || 'Your message was flagged and cannot be posted.')
+        }, 700)
         return
       }
 
       if (!res.ok) throw new Error(data.error || 'Server error')
 
+      // Success — launch the rocket!
       addPost(data.post)
       setStatus('success')
+      setRocketPhase('launch')
       setTimeout(() => {
         setPostModalOpen(false)
         setText('')
         setStatus('idle')
-      }, 1200)
+        setRocketPhase(null)
+      }, 1000)
 
     } catch (err) {
       console.error('[PostModal]', err)
-      setStatus('error')
-      setErrorMsg('Could not reach the server. Make sure the backend is running.')
+      setRocketPhase('fail')
+      setTimeout(() => {
+        setStatus('error')
+        setRocketPhase(null)
+        setErrorMsg('Could not reach the server. Make sure the backend is running.')
+      }, 700)
     }
   }
 
@@ -112,14 +180,17 @@ export default function PostModal() {
 
   // On mobile: fixed bottom sheet, no dragging needed
   const wrapperClass = isSmallScreen
-    ? 'fixed bottom-0 left-0 right-0 z-50 glass-dark rounded-t-3xl flex flex-col gap-4 p-4 safe-bottom animate-slide-up'
-    : 'fixed z-50 glass-dark rounded-3xl flex flex-col gap-4 p-5 shadow-2xl shadow-black/60'
+    ? 'fixed bottom-0 left-0 right-0 z-50 flex flex-col gap-3 p-4 safe-bottom animate-slide-up'
+    : 'fixed z-50 flex flex-col gap-3 p-5 animate-pop-in'
 
   const wrapperStyle = isSmallScreen
     ? {
         maxHeight: '80vh',
-        border: `1px solid ${selectedPlanet?.color}44`,
+        background: 'rgba(10,10,26,0.92)',
+        border: '1px solid rgba(255,255,255,0.06)',
         borderBottom: 'none',
+        borderRadius: '16px 16px 0 0',
+        backdropFilter: 'blur(16px)',
       }
     : {
         ...dragProps.style,
@@ -127,10 +198,13 @@ export default function PostModal() {
         top: position.y,
         width: PANEL_W,
         maxWidth: 'calc(100vw - 24px)',
-        border: `1px solid ${selectedPlanet?.color}44`,
+        background: 'rgba(10,10,26,0.92)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: '4px',
+        backdropFilter: 'blur(16px)',
         boxShadow: isDragging
           ? '0 30px 60px -12px rgba(0,0,0,0.9)'
-          : '0 20px 40px -12px rgba(0,0,0,0.7)',
+          : '0 20px 40px -12px rgba(0,0,0,0.8)',
         cursor: isDragging ? 'grabbing' : 'default',
       }
 
@@ -145,33 +219,26 @@ export default function PostModal() {
       {/* ── Drag handle / header ─────────────────────────────────────────── */}
       <div
         {...handleProps}
-        className="flex items-center justify-between gap-3 -m-1 p-1 rounded-xl
-                   select-none focus:outline-none focus:ring-1 focus:ring-violet-500/50"
+        className="flex items-center justify-between gap-3 select-none"
       >
-        <div className="flex items-center gap-3 min-w-0">
-          {/* Grip affordance */}
-          <span className="text-slate-600 text-base leading-none shrink-0" aria-hidden="true">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-slate-600 text-xs leading-none shrink-0" aria-hidden="true">
             ⠿
           </span>
-          <span className="text-2xl shrink-0">{selectedPlanet?.emoji}</span>
           <div className="min-w-0">
-            <h2 className="font-bold text-white text-base leading-tight truncate">
-              Broadcast Anonymously
-            </h2>
-            <p className="text-xs text-slate-400 truncate">
-              to the{' '}
-              <span className="font-semibold" style={{ color: selectedPlanet?.color }}>
-                {selectedPlanet?.label}
-              </span>{' '}
-              planet
+            <p className="text-xs tracking-[0.15em] uppercase text-slate-400">
+              Broadcast to
             </p>
+            <h2 className="text-base font-medium text-white truncate">
+              {selectedPlanet?.label}
+            </h2>
           </div>
         </div>
 
         <button
           onClick={handleClose}
           data-no-drag
-          className="text-slate-500 hover:text-white transition-colors text-xl
+          className="text-slate-600 hover:text-white transition-colors text-sm
                      leading-none shrink-0 px-1"
           aria-label="Close"
         >
@@ -179,6 +246,11 @@ export default function PostModal() {
         </button>
       </div>
 
+      {/* ── Rocket animation overlay ─────────────────────────────────────── */}
+      {rocketPhase ? (
+        <RocketAnimation phase={rocketPhase} />
+      ) : (
+      <>
       {/* ── Tailored prompt from the check-in ────────────────────────────── */}
       {tailoredPrompt && (
         <div
@@ -206,21 +278,17 @@ export default function PostModal() {
           placeholder={
             tailoredPrompt
               ? 'Write freely — this is yours alone…'
-              : `What's on your mind? Share anonymously to the ${selectedPlanet?.label} space...`
+              : `What's on your mind?`
           }
-          rows={6}
+          rows={5}
           autoFocus
-          // Keep browser extensions (Grammarly etc.) out of the composer.
-          // They inject overlays that swallow pointer events, and anonymous
-          // posts should not be sent to third-party services.
           data-gramm="false"
           data-gramm_editor="false"
           data-enable-grammarly="false"
           spellCheck={false}
-          className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3
+          className="w-full bg-white/[0.03] border border-white/[0.08] rounded-sm px-3 py-3
                      text-slate-200 placeholder-slate-600 text-sm resize-none
-                     focus:outline-none focus:border-violet-500/60
-                     focus:ring-1 focus:ring-violet-500/30 transition-colors"
+                     focus:outline-none focus:border-white/20 transition-colors"
           aria-label="Post content"
           disabled={status === 'checking' || status === 'success'}
         />
@@ -254,33 +322,35 @@ export default function PostModal() {
       )}
 
       {/* ── Disclaimer ───────────────────────────────────────────────────── */}
-      <p className="text-xs text-slate-600 leading-relaxed">
-        🤖 All posts pass through AI moderation before being visible.
-        Harmful content is blocked. Your session is never linked to your identity.
+      <p className="text-xs text-slate-400 leading-relaxed">
+        AI-moderated for safety. Your session is never linked to your identity.
       </p>
 
       {/* ── Actions ──────────────────────────────────────────────────────── */}
-      <div className="flex gap-3">
+      <div className="flex gap-2">
         <button
           onClick={handleClose}
-          className="flex-1 py-3 rounded-xl text-sm text-slate-400 glass
-                     hover:text-white transition-colors"
+          className="flex-1 py-2.5 rounded-sm text-xs tracking-[0.1em] uppercase
+                     text-slate-300 border border-white/[0.15]
+                     hover:text-white hover:border-white/30 transition-all"
         >
           Cancel
         </button>
         <button
           onClick={handleSubmit}
           disabled={!text.trim() || status === 'checking' || status === 'success'}
-          className="flex-1 py-3 rounded-xl font-semibold text-white text-sm
-                     bg-gradient-to-r from-violet-600 to-indigo-600
-                     hover:from-violet-500 hover:to-indigo-500
-                     disabled:opacity-40 disabled:cursor-not-allowed
+          className="flex-1 py-2.5 rounded-sm text-xs tracking-[0.1em] uppercase font-medium
+                     text-white border border-white/30
+                     hover:bg-white hover:text-[#050510]
+                     disabled:opacity-30 disabled:cursor-not-allowed
                      transition-all duration-200"
           aria-busy={status === 'checking'}
         >
-          {status === 'checking' ? '⏳ Scanning...' : status === 'success' ? '✓ Sent!' : '✦ Broadcast'}
+          {status === 'checking' ? 'Scanning...' : status === 'success' ? '✓ Sent' : 'Broadcast'}
         </button>
       </div>
+      </>
+      )}
     </div>
   )
 }

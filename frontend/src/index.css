@@ -133,6 +133,58 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.3); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes rocketRumble {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-2px) rotate(-0.5deg); }
+  40% { transform: translateX(2px) rotate(0.5deg); }
+  60% { transform: translateX(-1px) rotate(-0.3deg); }
+  80% { transform: translateX(1px) rotate(0.3deg); }
+}
+
+@keyframes rocketLaunch {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  30% { transform: translateY(-20px) scale(1.05); opacity: 1; }
+  100% { transform: translateY(-120vh) scale(0.5); opacity: 0; }
+}
+
+@keyframes rocketFail {
+  0% { transform: translateX(0); }
+  10% { transform: translateX(-8px) rotate(-2deg); }
+  20% { transform: translateX(8px) rotate(2deg); }
+  30% { transform: translateX(-6px) rotate(-1.5deg); }
+  40% { transform: translateX(6px) rotate(1.5deg); }
+  50% { transform: translateX(-4px) rotate(-1deg); }
+  60% { transform: translateX(4px) rotate(1deg); }
+  80% { transform: translateX(-2px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes exhaustFlicker {
+  0%, 100% { opacity: 0.8; transform: scaleY(1); }
+  50% { opacity: 1; transform: scaleY(1.2); }
+}
+
+.animate-rocket-rumble {
+  animation: rocketRumble 0.15s ease-in-out infinite;
+}
+
+.animate-rocket-launch {
+  animation: rocketLaunch 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-rocket-fail {
+  animation: rocketFail 0.6s ease-out;
+}
+
+.animate-exhaust {
+  animation: exhaustFlicker 0.2s ease-in-out infinite;
+}
+
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(40px); }
   to { opacity: 1; transform: translateY(0); }
@@ -152,4 +204,8 @@
 
 .animate-slide-up {
   animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pop-in {
+  animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }

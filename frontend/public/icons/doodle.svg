@@ -1,0 +1,16 @@
+<svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Planet body -->
+  <circle cx="100" cy="100" r="75" stroke="#f5f5f5" stroke-width="4" fill="none"/>
+  <!-- Horizontal bands -->
+  <path d="M30 85 Q100 75 170 85" stroke="#f5f5f5" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M35 115 Q100 125 165 115" stroke="#f5f5f5" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <!-- Paintbrush -->
+  <path d="M85 95 Q95 80 110 85 Q120 88 115 100 Q110 112 95 108 Q82 105 85 95Z" stroke="#f5f5f5" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <!-- Paint splashes -->
+  <circle cx="70" cy="70" r="4" fill="#f5f5f5" opacity="0.7"/>
+  <circle cx="140" cy="65" r="3" fill="#f5f5f5" opacity="0.6"/>
+  <circle cx="135" cy="135" r="5" fill="#f5f5f5" opacity="0.5"/>
+  <circle cx="60" cy="130" r="3.5" fill="#f5f5f5" opacity="0.6"/>
+  <!-- Swirl (creativity) -->
+  <path d="M95 100 Q100 90 108 95 Q112 100 105 105 Q98 108 95 100Z" stroke="#f5f5f5" stroke-width="1.5" fill="none"/>
+</svg>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import useAppStore from '../../store/useAppStore'
+import useAuth from '../../hooks/useAuth'
 import { REACTIONS } from '../../data/reactions'
 import { apiFetch } from '../../lib/api'
 
@@ -12,13 +13,14 @@ import { apiFetch } from '../../lib/api'
  */
 export default function ReactionBar({ post, accentColor = '#8b5cf6' }) {
   const { sessionId, reactions, applyReaction, setReportTarget } = useAppStore()
+  const { isAuthenticated } = useAuth()
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
 
   const entry = reactions[post.id] || { counts: {}, mine: null }
 
   const handleReact = async (emoji) => {
-    if (busy || !sessionId) return
+    if (busy || !sessionId || !isAuthenticated) return
     setBusy(true)
     setFailed(false)
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import useAppStore from '../../store/useAppStore'
+import useAuth from '../../hooks/useAuth'
 import { apiFetch } from '../../lib/api'
 
 /**
@@ -11,6 +12,7 @@ import { apiFetch } from '../../lib/api'
  */
 export default function ReplyThread({ post, accentColor }) {
   const { sessionId } = useAppStore()
+  const { isAuthenticated } = useAuth()
 
   const [expanded, setExpanded] = useState(false)
   const [replies, setReplies] = useState([])
@@ -124,8 +126,10 @@ export default function ReplyThread({ post, accentColor }) {
             </div>
           ))}
 
-          {/* Compose */}
-          {!composing ? (
+          {/* Compose — only for authenticated users */}
+          {!isAuthenticated ? (
+            <p className="text-[10px] text-slate-600">Sign in to reply</p>
+          ) : !composing ? (
             <button
               onClick={() => setComposing(true)}
               className="text-xs text-violet-400 hover:text-violet-300 transition-colors

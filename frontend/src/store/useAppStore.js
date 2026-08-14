@@ -17,7 +17,7 @@ const useAppStore = create((set, get) => ({
   },
 
   // ── App Phase ─────────────────────────────────────────────────────────────
-  // 'landing' | 'avatar' | 'checkin' | 'space'
+  // 'landing' | 'auth' | 'avatar' | 'checkin' | 'space'
   phase: 'landing',
   setPhase: (phase) => set({ phase }),
 
@@ -41,9 +41,8 @@ const useAppStore = create((set, get) => ({
   selectedPlanet: null,
   setSelectedPlanet: (planet) => set({
     selectedPlanet: planet,
-    // Immediately open the composer when a planet is selected so users can
-    // start writing without an extra tap.
-    postModalOpen: !!planet,
+    // Post modal is opened by the App based on auth state — not here.
+    // This just selects the planet for camera focus.
   }),
 
   // ── Live planet world positions (written every frame by EmotionPlanet) ────

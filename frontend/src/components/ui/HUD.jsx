@@ -5,102 +5,80 @@ import { isSmallScreen } from '../../lib/device'
 import PrivateNotesPanel from './PrivateNotesPanel'
 
 /**
- * HUD — overlay interface on the SpaceScreen.
+ * HUD — minimal overlay on the SpaceScreen.
  *
- * On desktop: top bar, side controls hint, bottom planet strip.
- * On mobile: compact top bar, bottom planet strip with larger touch targets,
- *            no controls hint, no floating buttons that overlap the 3D scene.
+ * OkayDev-inspired: minimal chrome, uppercase micro-labels, border-only
+ * buttons, monochrome with one accent. The 3D scene is the star — the UI
+ * stays out of the way.
  */
 export default function HUD({ peerCount = 0 }) {
-  const { setPhase, sessionId, setSelectedPlanet, privateNotes } = useAppStore()
+  const { setPhase, setSelectedPlanet, privateNotes } = useAppStore()
   const [notesOpen, setNotesOpen] = useState(false)
-
-  const shortId = sessionId ? sessionId.slice(0, 8).toUpperCase() : '--------'
 
   return (
     <>
-      {/* ── Top bar ────────────────────────────────────────────────────────── */}
+      {/* ── Top bar ────────────────────────────────────────────────────── */}
       <div className="absolute top-0 left-0 right-0 z-20 flex items-center
-                      justify-between px-3 py-2 md:px-5 md:py-3 safe-top">
+                      justify-between px-4 py-3 md:px-6 md:py-4 safe-top">
 
         {/* Left: back + notes */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setPhase('avatar')}
-            className="glass px-3 py-2 rounded-xl text-xs text-slate-400
-                       hover:text-white transition-colors"
+            className="px-3 py-1.5 rounded-sm text-xs tracking-[0.1em] uppercase
+                       text-slate-300 border border-white/[0.15]
+                       hover:text-white hover:border-white/30 transition-all"
             aria-label="Back to avatar"
           >
-            ←
+            ← Back
           </button>
 
           {privateNotes.length > 0 && (
             <button
               onClick={() => setNotesOpen((v) => !v)}
-              className="glass px-3 py-2 rounded-xl text-xs text-slate-400
-                         hover:text-white transition-colors"
+              className="px-3 py-1.5 rounded-sm text-xs tracking-[0.1em] uppercase
+                         text-slate-300 border border-white/[0.15]
+                         hover:text-white hover:border-white/30 transition-all"
               aria-label="My private notes"
             >
-              🔒 <span className="text-violet-300 ml-0.5">{privateNotes.length}</span>
+              🔒 {privateNotes.length}
             </button>
           )}
         </div>
 
-        {/* Centre: branding */}
-        <div className="glass px-3 py-1.5 md:px-5 md:py-2.5 rounded-2xl
-                        flex items-center gap-2">
-          <span className="text-base md:text-lg font-bold text-white">✦</span>
-          <span className="hidden md:inline text-sm font-bold text-white">AnonEmote</span>
-          <span className="hidden md:inline w-px h-4 bg-white/10" />
-          <span className="text-[10px] md:text-xs text-slate-400 font-mono">
-            {shortId}
-          </span>
-          {/* Online indicator */}
+        {/* Centre: logo + online */}
+        <div className="flex items-center gap-3">
+          <img src="/icons/logo.png" alt="AnonEmote" className="w-6 h-6 opacity-70" draggable={false} />
           {peerCount > 0 && (
-            <>
-              <span className="w-px h-3 bg-white/10" />
-              <span className="flex items-center gap-1 text-[10px] text-emerald-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                {peerCount + 1}
-              </span>
-            </>
+            <span className="flex items-center gap-1.5 text-xs tracking-[0.05em] text-emerald-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              {peerCount + 1} online
+            </span>
           )}
         </div>
 
-        {/* Right: controls hint (desktop only) */}
-        <div className="hidden md:block glass px-3 py-2 rounded-xl text-xs
-                        text-slate-500 leading-relaxed">
-          <p>🖱 Drag to rotate</p>
-          <p>⚙ Scroll to zoom</p>
-          <p>🪐 Tap planet to focus</p>
-        </div>
-
-        {/* Right spacer on mobile so the top bar stays centred */}
-        <div className="w-10 md:hidden" />
+        {/* Right: spacer for balance */}
+        <div className="w-16" />
       </div>
 
-      {/* ── Planet navigation — bottom ─────────────────────────────────────
-          On mobile this is the primary way to reach a planet, since tapping
-          a small sphere is unreliable on touch. Horizontally scrollable
-          with large touch targets. */}
+      {/* ── Planet nav — bottom ────────────────────────────────────────── */}
       <div className="absolute bottom-0 left-0 right-0 z-20 safe-bottom">
-        <div className="flex gap-1.5 md:gap-2 px-3 pb-3 pt-2 md:px-4 md:pb-4
+        <div className="flex gap-1 md:gap-1.5 px-3 pb-3 pt-2 md:px-4 md:pb-4
                         overflow-x-auto no-scrollbar justify-start md:justify-center
                         snap-x snap-mandatory">
           {PLANETS.map((p) => (
             <button
               key={p.id}
               onClick={() => setSelectedPlanet(p)}
-              className="glass px-3 py-2.5 md:px-3 md:py-1.5 rounded-2xl md:rounded-full
-                         text-xs font-medium text-slate-300
-                         hover:text-white transition-all duration-200
-                         hover:scale-105 active:scale-95
+              className="px-4 py-2 md:px-4 md:py-2 rounded-sm
+                         text-xs tracking-[0.05em] uppercase
+                         font-medium text-slate-300 border border-white/[0.12]
+                         hover:text-white hover:border-white/30 hover:bg-white/[0.05]
+                         active:scale-95 transition-all duration-200
                          shrink-0 snap-start"
-              style={{ borderColor: p.color + '44' }}
               aria-label={`Focus on ${p.label} planet`}
             >
-              <span className="text-sm md:text-xs">{p.emoji}</span>{' '}
-              <span className="text-xs">{p.label}</span>
+              {p.label}
             </button>
           ))}
         </div>

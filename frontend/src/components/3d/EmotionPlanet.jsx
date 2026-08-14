@@ -50,11 +50,8 @@ export default function EmotionPlanet({ planet }) {
 
   useFrame((state, delta) => {
     const t = state.clock.elapsedTime
-    // Freeze orbit when this planet is selected — prevents the camera from
-    // having to chase the planet as it drifts away.
-    if (!isSelected) {
-      angleRef.current += planet.orbitSpeed * delta
-    }
+    // Planet always orbits — camera tracks it when selected.
+    angleRef.current += planet.orbitSpeed * delta
 
     if (orbitRef.current) {
       // Move planet along its circular orbit

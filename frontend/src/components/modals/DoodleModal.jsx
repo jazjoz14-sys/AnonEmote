@@ -73,7 +73,7 @@ export default function DoodleModal() {
     <div
       className={isSmallScreen
         ? 'fixed bottom-0 left-0 right-0 z-50 glass-dark rounded-t-3xl p-4 safe-bottom animate-slide-up'
-        : 'fixed z-50 glass-dark rounded-3xl p-5 shadow-2xl shadow-black/60'}
+        : 'fixed z-50 glass-dark rounded-3xl p-5 shadow-2xl shadow-black/60 animate-pop-in'}
       style={isSmallScreen
         ? { maxHeight: '90vh', border: `1px solid ${selectedPlanet?.color}44`, borderBottom: 'none' }
         : {

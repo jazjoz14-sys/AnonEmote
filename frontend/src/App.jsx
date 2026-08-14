@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import useAppStore from './store/useAppStore'
+import useAuth from './hooks/useAuth'
 import LandingScreen from './screens/LandingScreen'
+import AuthScreen from './screens/AuthScreen'
 import AvatarScreen from './screens/AvatarScreen'
 import CheckInScreen from './screens/CheckInScreen'
 import SpaceScreen from './screens/SpaceScreen'
@@ -28,10 +30,12 @@ function useIsAdminRoute() {
 
 export default function App() {
   const isAdmin = useIsAdminRoute()
+  const { user, isAuthenticated, loading: authLoading } = useAuth()
 
   const {
     phase, initSession, loadPrivateNotes,
     crisis, postModalOpen, reportTarget, selectedPlanet,
+    setPostModalOpen,
   } = useAppStore()
 
   // Initialize anonymous session and restore any private notes from this tab
@@ -39,6 +43,15 @@ export default function App() {
     initSession()
     loadPrivateNotes()
   }, [initSession, loadPrivateNotes])
+
+  // Auto-open post modal when a planet is selected (only for authenticated users)
+  useEffect(() => {
+    if (selectedPlanet && isAuthenticated) {
+      setPostModalOpen(true)
+    } else if (!selectedPlanet) {
+      setPostModalOpen(false)
+    }
+  }, [selectedPlanet, isAuthenticated, setPostModalOpen])
 
   // The admin console renders on its own — the 3D canvas is never mounted here,
   // which also avoids allocating a WebGL context for administrative work.
@@ -50,14 +63,14 @@ export default function App() {
          style={{ height: '100%' }}>
       {/* Phase-based screen rendering */}
       {phase === 'landing' && <LandingScreen />}
+      {phase === 'auth' && <AuthScreen />}
       {phase === 'avatar' && <AvatarScreen />}
       {phase === 'checkin' && <CheckInScreen />}
       {phase === 'space' && <SpaceScreen />}
 
-      {/* Global overlays, layered above everything */}
-      {/* Modal routing: doodle planet gets the drawing canvas, others get text */}
-      {postModalOpen && selectedPlanet?.id === 'doodle' && <DoodleModal />}
-      {postModalOpen && selectedPlanet?.id !== 'doodle' && <PostModal />}
+      {/* Global overlays — only show post/doodle modals if authenticated */}
+      {postModalOpen && isAuthenticated && selectedPlanet?.id === 'doodle' && <DoodleModal />}
+      {postModalOpen && isAuthenticated && selectedPlanet?.id !== 'doodle' && <PostModal />}
       {reportTarget && <ReportModal />}
       {crisis.open && <CrisisModal />}
     </div>

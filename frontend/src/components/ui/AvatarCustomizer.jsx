@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import useAppStore from '../../store/useAppStore'
 import { SHAPES, AURA_COLORS, PARTICLE_EFFECTS } from '../../data/avatarOptions'
 
@@ -29,13 +29,19 @@ function OptionButton({ selected, onClick, children, accent, className = '' }) {
   )
 }
 
-function Section({ label, children }) {
+function Section({ label, children, defaultOpen = true }) {
+  const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className="flex flex-col gap-2">
-      <span className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
-        {label}
-      </span>
-      {children}
+    <div className="flex flex-col gap-1.5">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.15em] text-slate-500
+                   hover:text-slate-300 transition-colors"
+      >
+        <span>{label}</span>
+        <span className="text-[10px]">{open ? '▾' : '▸'}</span>
+      </button>
+      {open && children}
     </div>
   )
 }
@@ -45,27 +51,27 @@ export default function AvatarCustomizer() {
 
   return (
     <div className="absolute inset-0 z-20 flex items-end md:items-center md:justify-end
-                    p-4 md:p-8 pointer-events-none overflow-y-auto">
+                    p-3 md:p-6 pointer-events-none overflow-y-auto">
 
       {/* Panel — pointer events re-enabled here so the canvas stays
           interactive everywhere else */}
       <div
-        className="pointer-events-auto w-full md:w-[360px] rounded-3xl p-5
-                   flex flex-col gap-5 animate-slide-up"
+        className="pointer-events-auto w-full md:w-[340px] md:max-h-[90vh] rounded-2xl p-4 md:p-5
+                   flex flex-col gap-3 animate-slide-up"
         style={{
-          background: 'rgba(250, 250, 250, 0.10)',
-          backdropFilter: 'blur(14px)',
-          WebkitBackdropFilter: 'blur(14px)',
-          border: '1px solid rgba(232, 232, 232, 0.22)',
-          boxShadow: '0 20px 50px -12px rgba(0,0,0,0.7)',
+          background: 'rgba(10, 10, 26, 0.85)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          boxShadow: '0 20px 50px -12px rgba(0,0,0,0.8)',
+          maxHeight: 'calc(100vh - 24px)',
         }}
       >
         {/* Header */}
-        <header className="flex flex-col gap-1">
-          <h1 className="text-xl font-semibold text-white">Shape your presence</h1>
-          <p className="text-xs text-slate-400 leading-relaxed">
-            You are an energy form here — no name, no face, nothing that points
-            back to you.
+        <header className="flex flex-col gap-0.5">
+          <h1 className="text-base font-semibold text-white">Shape your presence</h1>
+          <p className="text-[11px] text-slate-500 leading-relaxed">
+            You are an energy form — no name, no face.
           </p>
         </header>
 
@@ -88,7 +94,7 @@ export default function AvatarCustomizer() {
         </Section>
 
         {/* ── Aura colour ───────────────────────────────────────────────── */}
-        <Section label="Aura">
+        <Section label="Aura" defaultOpen={false}>
           <div className="flex flex-wrap gap-1.5">
             {AURA_COLORS.map((c) => {
               const selected = avatar.auraColor === c.hex
@@ -99,7 +105,7 @@ export default function AvatarCustomizer() {
                   title={c.label}
                   aria-label={c.label}
                   aria-pressed={selected}
-                  className={`w-8 h-8 rounded-full transition-all duration-200
+                  className={`w-7 h-7 rounded-full transition-all duration-200
                               focus:outline-none focus:ring-2 focus:ring-offset-1
                               focus:ring-offset-transparent focus:ring-white/50
                               ${selected
@@ -119,7 +125,7 @@ export default function AvatarCustomizer() {
         </Section>
 
         {/* ── Particles ─────────────────────────────────────────────────── */}
-        <Section label="Presence effect">
+        <Section label="Presence effect" defaultOpen={false}>
           <div className="grid grid-cols-3 gap-2">
             {PARTICLE_EFFECTS.map((p) => (
               <OptionButton
@@ -139,7 +145,10 @@ export default function AvatarCustomizer() {
         </Section>
 
         {/* ── Scale ─────────────────────────────────────────────────────── */}
-        <Section label={`Size — ${avatar.scale.toFixed(1)}×`}>
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
+            Size — {avatar.scale.toFixed(1)}×
+          </span>
           <input
             type="range"
             min="0.6"
@@ -150,15 +159,15 @@ export default function AvatarCustomizer() {
             className="w-full accent-violet-400"
             aria-label="Avatar size"
           />
-        </Section>
+        </div>
 
         {/* ── Actions ───────────────────────────────────────────────────── */}
         <button
           onClick={() => setPhase('checkin')}
-          className="w-full py-3.5 rounded-2xl font-semibold text-white
-                     bg-gradient-to-r from-violet-600 to-indigo-600
-                     hover:from-violet-500 hover:to-indigo-500
-                     transition-all duration-300 shadow-lg shadow-violet-900/40
+          className="w-full py-3 rounded-xl text-sm font-medium text-white
+                     border border-white/20
+                     hover:bg-white hover:text-[#050510]
+                     transition-all duration-300
                      focus:outline-none focus:ring-2 focus:ring-violet-400"
         >
           Continue →
@@ -166,7 +175,7 @@ export default function AvatarCustomizer() {
 
         <button
           onClick={() => setPhase('landing')}
-          className="text-xs text-slate-600 hover:text-slate-400 transition-colors"
+          className="text-[11px] text-slate-600 hover:text-slate-400 transition-colors text-center"
         >
           ← Back
         </button>

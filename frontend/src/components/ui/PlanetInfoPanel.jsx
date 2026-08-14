@@ -1,5 +1,6 @@
-import React, { useMemo, useEffect } from 'react'
+import React, { useMemo, useEffect, useState } from 'react'
 import useAppStore from '../../store/useAppStore'
+import useAuth from '../../hooks/useAuth'
 import useDraggable from '../../hooks/useDraggable'
 import ReactionBar from './ReactionBar'
 import ReplyThread from './ReplyThread'
@@ -19,10 +20,13 @@ export default function PlanetInfoPanel() {
     selectedPlanet,
     setSelectedPlanet,
     setPostModalOpen,
+    setPhase,
     posts,
     sessionId,
     mergeReactions,
   } = useAppStore()
+  const { isAuthenticated } = useAuth()
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false)
 
   const { position, isDragging, dragProps, handleProps } = useDraggable({
     width: PANEL_W,
@@ -94,11 +98,10 @@ export default function PlanetInfoPanel() {
 
         {/* Broadcast */}
         <button
-          onClick={() => setPostModalOpen(true)}
-          className="w-full py-3 rounded-xl font-semibold text-white text-sm
-                     bg-gradient-to-r from-violet-600 to-indigo-600
-                     active:scale-[0.98] transition-all"
-          style={{ boxShadow: `0 0 16px ${selectedPlanet.color}44` }}
+          onClick={() => isAuthenticated ? setPostModalOpen(true) : setShowAuthPrompt(true)}
+          className="w-full py-3 rounded-sm text-xs tracking-[0.1em] uppercase font-medium
+                     text-white border border-white/30
+                     hover:bg-white hover:text-[#050510] transition-all"
         >
           + Broadcast to {selectedPlanet.label}
         </button>
@@ -143,6 +146,7 @@ export default function PlanetInfoPanel() {
 
   // Desktop: draggable floating panel
   return (
+    <>
     <div
       {...dragProps}
       className="fixed z-30 glass-dark rounded-3xl p-5 flex flex-col gap-4"
@@ -190,11 +194,10 @@ export default function PlanetInfoPanel() {
 
       {/* ── Broadcast button ─────────────────────────────────────────────── */}
       <button
-        onClick={() => setPostModalOpen(true)}
-        className="w-full py-2.5 rounded-xl font-semibold text-white text-sm
-                   bg-gradient-to-r from-violet-600 to-indigo-600
-                   hover:from-violet-500 hover:to-indigo-500 transition-all shrink-0"
-        style={{ boxShadow: `0 0 20px ${selectedPlanet.color}44` }}
+        onClick={() => isAuthenticated ? setPostModalOpen(true) : setShowAuthPrompt(true)}
+        className="w-full py-2.5 rounded-sm text-xs tracking-[0.1em] uppercase font-medium
+                   text-white border border-white/30
+                   hover:bg-white hover:text-[#050510] transition-all shrink-0"
       >
         + Broadcast to {selectedPlanet.label}
       </button>
@@ -242,5 +245,38 @@ export default function PlanetInfoPanel() {
         )}
       </div>
     </div>
+
+    {/* Auth prompt modal */}
+    {showAuthPrompt && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-6"
+           style={{ background: 'rgba(5,5,16,0.85)' }}
+           onClick={() => setShowAuthPrompt(false)}>
+        <div className="max-w-xs w-full rounded-sm p-6 flex flex-col items-center gap-4 text-center
+                        border border-white/[0.1] animate-pop-in"
+             style={{ background: 'rgba(10,10,26,0.97)' }}
+             onClick={(e) => e.stopPropagation()}>
+          <img src="/icons/logo.png" alt="" className="w-12 h-12 opacity-80" draggable={false} />
+          <p className="text-white text-sm font-medium">Sign in to broadcast</p>
+          <p className="text-slate-400 text-xs leading-relaxed">
+            Create a free account to post, reply, and react. Your identity stays anonymous to other users.
+          </p>
+          <button
+            onClick={() => { setShowAuthPrompt(false); setPhase('auth') }}
+            className="w-full py-3 rounded-sm text-xs tracking-[0.15em] uppercase font-medium
+                       text-white border border-white/30
+                       hover:bg-white hover:text-[#050510] transition-all"
+          >
+            Sign In / Register
+          </button>
+          <button
+            onClick={() => setShowAuthPrompt(false)}
+            className="text-xs text-slate-600 hover:text-slate-400 transition-colors"
+          >
+            Maybe later
+          </button>
+        </div>
+      </div>
+    )}
+    </>
   )
 }

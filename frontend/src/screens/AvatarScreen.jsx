@@ -14,13 +14,13 @@ import AvatarCustomizer from '../components/ui/AvatarCustomizer'
  */
 export default function AvatarScreen() {
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full overflow-hidden">
       <Canvas
         camera={{ position: [0, 0, 5], fov: 50 }}
         dpr={[1, 1.5]}
         gl={{ antialias: true, powerPreference: 'high-performance' }}
         className="w-full h-full"
-        style={{ background: 'radial-gradient(ellipse at center, #16162e 0%, #07070f 100%)' }}
+        style={{ background: '#050510' }}
       >
         <Suspense fallback={null}>
           {/* Soft studio lighting — the avatar is emissive, so this is mostly
