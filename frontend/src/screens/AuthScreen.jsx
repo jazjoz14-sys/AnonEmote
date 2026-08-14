@@ -142,19 +142,21 @@ export default function AuthScreen() {
             {mode === 'login' ? "Don't have an account? Register" : 'Already have an account? Sign in'}
           </button>
 
-          {/* Guest access */}
+          {/* Guest access — make it clear and visible */}
           <button
             onClick={() => setPhase('avatar')}
-            className="text-xs text-slate-600 hover:text-slate-400 transition-colors"
+            className="w-full py-3 rounded-sm text-xs tracking-[0.15em] uppercase font-medium
+                       text-slate-300 border border-white/[0.12]
+                       hover:text-white hover:border-white/25
+                       transition-all duration-200"
           >
-            Continue as guest (view-only)
+            Continue as Guest (View Only)
           </button>
         </div>
 
         {/* Privacy note */}
-        <p className="text-[10px] text-slate-700 text-center leading-relaxed">
-          Your email is only used for login. Other users never see it.
-          Posts remain anonymous — only admins can link content to accounts when investigating reports.
+        <p className="text-[10px] text-slate-600 text-center leading-relaxed">
+          Guests can explore the 3D star system and read posts but cannot broadcast, react, or reply.
         </p>
       </div>
     </div>
