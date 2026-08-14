@@ -391,7 +391,7 @@ function PlanetSlide({ planet }) {
       {/* Info */}
       <div className="w-full md:w-1/2 max-w-md flex flex-col gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-3 h-3 rounded-full" style={{ background: planet.color }} />
+          <img src={PLANET_ICONS[planet.id]} alt="" className="w-8 h-8 object-contain" draggable={false} />
           <h3 className="text-white text-2xl md:text-3xl font-bold tracking-tight">{planet.label}</h3>
         </div>
         <p className="text-slate-300 text-sm md:text-base leading-relaxed">
