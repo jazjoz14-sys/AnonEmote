@@ -97,7 +97,12 @@ moderationRouter.post('/', limiter, async (req, res) => {
   const insertPayload = {
     content: text.trim(),
     planet_id: pid,
-    session_id: sid,
+    session_id: req.userId || sid, // Use auth user ID if authenticated, otherwise session UUID
+  }
+
+  // Link post to authenticated user for accountability (hidden from other users)
+  if (req.userId) {
+    insertPayload.author_id = req.userId
   }
 
   // Attach drawing if provided (only allowed on the doodle planet)

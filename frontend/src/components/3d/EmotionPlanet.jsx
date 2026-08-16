@@ -47,6 +47,8 @@ export default function EmotionPlanet({ planet }) {
   const angleRef = useRef(Math.random() * Math.PI * 2)
   // Reusable Vector3 — avoids a new allocation every frame
   const worldPosRef = useRef(new THREE.Vector3())
+  // Pre-allocated scale target — reused every frame instead of creating new Vector3
+  const _scaleTarget = useRef(new THREE.Vector3(1, 1, 1))
 
   useFrame((state, delta) => {
     const t = state.clock.elapsedTime
@@ -71,10 +73,8 @@ export default function EmotionPlanet({ planet }) {
     if (meshRef.current) {
       meshRef.current.rotation.y = t * (planet.spinSpeed ?? 0.25)
       const targetScale = hovered || isSelected ? 1.15 : 1
-      meshRef.current.scale.lerp(
-        new THREE.Vector3(targetScale, targetScale, targetScale),
-        0.08
-      )
+      _scaleTarget.current.set(targetScale, targetScale, targetScale)
+      meshRef.current.scale.lerp(_scaleTarget.current, 0.08)
     }
 
     // Halo pulse — minimal, so it never flattens the day/night terminator

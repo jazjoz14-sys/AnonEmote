@@ -1,12 +1,37 @@
 import { create } from 'zustand'
 import { v4 as uuidv4 } from 'uuid'
 import { DEFAULT_AVATAR } from '../data/avatarOptions'
+import { supabase } from '../lib/supabase'
 
 /**
  * Global Zustand store for AnonEmote.
- * Manages session UUID, avatar config, app phase, selected planet, and posts.
+ * Manages auth, session, avatar config, app phase, selected planet, and posts.
  */
 const useAppStore = create((set, get) => ({
+  // ── Auth (centralized — no more independent useAuth hooks per component) ──
+  authUser: null,
+  authLoading: true,
+  isAuthenticated: false,
+
+  initAuth: () => {
+    // Check existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const user = session?.user ?? null
+      set({ authUser: user, isAuthenticated: !!user, authLoading: false })
+    })
+
+    // Listen for auth state changes (login, logout, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        const user = session?.user ?? null
+        set({ authUser: user, isAuthenticated: !!user })
+      }
+    )
+
+    // Store cleanup function (called nowhere currently, but available)
+    set({ _authUnsubscribe: () => subscription.unsubscribe() })
+  },
+
   // ── Session ──────────────────────────────────────────────────────────────
   sessionId: null,
   initSession: () => {

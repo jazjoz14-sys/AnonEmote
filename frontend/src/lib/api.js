@@ -1,3 +1,5 @@
+import { supabase } from './supabase'
+
 /**
  * API base resolution.
  *
@@ -33,16 +35,34 @@ export function apiUrl(path) {
 }
 
 /**
- * fetch wrapper that resolves the base URL and always sends JSON.
- * Returns the raw Response so callers can inspect status codes — the
- * moderation flow depends on distinguishing 403 (crisis) from 406 (toxic).
+ * Get the current Supabase session token (if logged in).
+ * Returns null for guest users.
  */
-export function apiFetch(path, options = {}) {
+async function getAuthToken() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    return session?.access_token || null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * fetch wrapper that resolves the base URL, sends JSON, and attaches
+ * the Supabase auth token if the user is logged in.
+ * Returns the raw Response so callers can inspect status codes.
+ */
+export async function apiFetch(path, options = {}) {
+  const token = await getAuthToken()
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
   return fetch(apiUrl(path), {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers,
   })
 }

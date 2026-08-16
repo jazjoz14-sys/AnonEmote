@@ -10,6 +10,7 @@ dotenv.config({ path: join(__dirname, '..', '.env') })
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
+import { verifyAuth } from './middleware/verifyAuth.js'
 import { moderationRouter } from './routes/moderation.js'
 import { postsRouter } from './routes/posts.js'
 import { reactionsRouter } from './routes/reactions.js'
@@ -62,6 +63,9 @@ app.use(cors({
 // limit must accommodate them. 1MB covers a generous canvas without opening
 // the door to arbitrarily large payloads.
 app.use(express.json({ limit: '1mb' }))
+
+// ── Auth middleware (extracts user from JWT, doesn't block) ──────────────────
+app.use(verifyAuth)
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api/moderate', moderationRouter)

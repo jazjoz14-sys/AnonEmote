@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import useAppStore from '../../store/useAppStore'
-import useAuth from '../../hooks/useAuth'
 import { REACTIONS } from '../../data/reactions'
 import { apiFetch } from '../../lib/api'
 
@@ -12,8 +11,7 @@ import { apiFetch } from '../../lib/api'
  * are never sorted or ranked by them, so there is no leaderboard effect.
  */
 export default function ReactionBar({ post, accentColor = '#8b5cf6' }) {
-  const { sessionId, reactions, applyReaction, setReportTarget } = useAppStore()
-  const { isAuthenticated } = useAuth()
+  const { sessionId, reactions, applyReaction, setReportTarget, isAuthenticated } = useAppStore()
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
 

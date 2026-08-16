@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState, Suspense, useMemo } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
+import * as THREE from 'three'
 import useAppStore from '../store/useAppStore'
 import { CLAY, makeClayBlob } from '../components/3d/clay'
-import PlanetDecor from '../components/3d/PlanetDecor'
 import { PLANETS } from '../data/planets'
 
 /**
@@ -245,58 +245,6 @@ function BackgroundPlanets() {
   )
 }
 
-/* ── 3D planet for carousel card ────────────────────────────────────────────── */
-function CardPlanet({ planet }) {
-  const meshRef = useRef()
-  const clayGeo = useMemo(
-    () => makeClayBlob(2.2, 3, 0.055, planet.id.charCodeAt(0) + planet.id.length * 13),
-    [planet.id]
-  )
-
-  useFrame((state, delta) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y += delta * 0.3
-      meshRef.current.rotation.x += delta * 0.08
-    }
-  })
-
-  return (
-    <group>
-      <mesh ref={meshRef} geometry={planet.id === 'doodle' ? undefined : clayGeo}>
-        {planet.id === 'doodle' && <sphereGeometry args={[2.2, 32, 24]} />}
-        <meshStandardMaterial
-          color={planet.color}
-          emissive={planet.color}
-          emissiveIntensity={0.25}
-          roughness={CLAY.roughness}
-          metalness={CLAY.metalness}
-        />
-      </mesh>
-      {/* Same decorations as in the star system */}
-      <PlanetDecor planet={{ ...planet, size: 2.2 }} />
-    </group>
-  )
-}
-
-function PlanetCardCanvas({ planet }) {
-  return (
-    <Canvas
-      camera={{ position: [0, 0, 12], fov: 40 }}
-      dpr={[1, 1.5]}
-      gl={{ antialias: true, alpha: true }}
-      style={{ width: '100%', height: '100%', pointerEvents: 'none' }}
-    >
-      <ambientLight intensity={0.2} />
-      <directionalLight position={[5, 3, 5]} intensity={1.3} />
-      <pointLight position={[-4, -2, 3]} intensity={0.4} color="#8b5cf6" />
-      <hemisphereLight args={['#c7d2fe', '#1e1b4b', 0.15]} />
-      <Suspense fallback={null}>
-        <CardPlanet planet={planet} />
-      </Suspense>
-    </Canvas>
-  )
-}
-
 /* ── Horizontal scroll driven by vertical scroll (scroll-jacking) ──────────── */
 function PlanetCarousel() {
   const trackRef = useRef(null)
@@ -379,13 +327,15 @@ function PlanetSlide({ planet }) {
                     flex flex-col md:flex-row items-center justify-center
                     px-8 md:px-20 gap-8 md:gap-16">
 
-      {/* 3D planet — shows full planet with decor */}
-      <div className="w-full md:w-1/2 h-[40vh] md:h-[70vh] relative">
-        <PlanetCardCanvas planet={planet} />
-        {/* Icon badge */}
-        <div className="absolute top-4 left-4 w-10 h-10 opacity-50">
-          <img src={PLANET_ICONS[planet.id]} alt="" className="w-full h-full object-contain" draggable={false} />
-        </div>
+      {/* Planet visual — static icon (avoids WebGL context explosion) */}
+      <div className="w-full md:w-1/2 h-[40vh] md:h-[70vh] relative flex items-center justify-center"
+           style={{ background: 'radial-gradient(circle at center, rgba(139,92,246,0.03) 0%, transparent 60%)' }}>
+        <img
+          src={PLANET_ICONS[planet.id]}
+          alt={planet.label}
+          className="w-40 h-40 md:w-56 md:h-56 object-contain drop-shadow-[0_0_40px_rgba(139,92,246,0.2)]"
+          draggable={false}
+        />
       </div>
 
       {/* Info */}

@@ -1,6 +1,5 @@
 import React, { useMemo, useEffect, useState } from 'react'
 import useAppStore from '../../store/useAppStore'
-import useAuth from '../../hooks/useAuth'
 import useDraggable from '../../hooks/useDraggable'
 import ReactionBar from './ReactionBar'
 import ReplyThread from './ReplyThread'
@@ -24,8 +23,8 @@ export default function PlanetInfoPanel() {
     posts,
     sessionId,
     mergeReactions,
+    isAuthenticated,
   } = useAppStore()
-  const { isAuthenticated } = useAuth()
   const [showAuthPrompt, setShowAuthPrompt] = useState(false)
 
   const { position, isDragging, dragProps, handleProps } = useDraggable({

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import useAppStore from '../../store/useAppStore'
-import useAuth from '../../hooks/useAuth'
 import { apiFetch } from '../../lib/api'
 
 /**
@@ -11,8 +10,7 @@ import { apiFetch } from '../../lib/api'
  * are caught identically to top-level posts.
  */
 export default function ReplyThread({ post, accentColor }) {
-  const { sessionId } = useAppStore()
-  const { isAuthenticated } = useAuth()
+  const { sessionId, isAuthenticated } = useAppStore()
 
   const [expanded, setExpanded] = useState(false)
   const [replies, setReplies] = useState([])

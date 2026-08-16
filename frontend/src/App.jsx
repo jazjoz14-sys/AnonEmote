@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react'
 import useAppStore from './store/useAppStore'
-import useAuth from './hooks/useAuth'
 import LandingScreen from './screens/LandingScreen'
 import AuthScreen from './screens/AuthScreen'
 import AvatarScreen from './screens/AvatarScreen'
@@ -30,19 +29,19 @@ function useIsAdminRoute() {
 
 export default function App() {
   const isAdmin = useIsAdminRoute()
-  const { user, isAuthenticated, loading: authLoading } = useAuth()
 
   const {
-    phase, initSession, loadPrivateNotes,
+    phase, initSession, initAuth, loadPrivateNotes,
     crisis, postModalOpen, reportTarget, selectedPlanet,
-    setPostModalOpen,
+    setPostModalOpen, isAuthenticated,
   } = useAppStore()
 
-  // Initialize anonymous session and restore any private notes from this tab
+  // Initialize auth listener + anonymous session on mount
   useEffect(() => {
+    initAuth()
     initSession()
     loadPrivateNotes()
-  }, [initSession, loadPrivateNotes])
+  }, [initAuth, initSession, loadPrivateNotes])
 
   // Auto-open post modal when a planet is selected (only for authenticated users)
   useEffect(() => {
