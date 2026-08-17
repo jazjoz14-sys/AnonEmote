@@ -4,11 +4,13 @@ import AdminLogin from './AdminLogin'
 import MonitorTab from './MonitorTab'
 import ReportsTab from './ReportsTab'
 import RulesTab from './RulesTab'
+import UsersTab from './UsersTab'
 
 const TABS = [
   { id: 'monitor', label: 'Monitor Activity', icon: '📊' },
   { id: 'reports', label: 'Reported Content', icon: '⚑' },
   { id: 'rules', label: 'Filtering Rules', icon: '🛠' },
+  { id: 'users', label: 'User Management', icon: '👥' },
 ]
 
 /**
@@ -107,6 +109,7 @@ export default function AdminApp() {
         {tab === 'monitor' && <MonitorTab onAuthError={handleAuthError} />}
         {tab === 'reports' && <ReportsTab onAuthError={handleAuthError} />}
         {tab === 'rules' && <RulesTab onAuthError={handleAuthError} />}
+        {tab === 'users' && <UsersTab onAuthError={handleAuthError} />}
       </main>
 
       <footer className="max-w-6xl mx-auto px-5 pb-8 pt-2">

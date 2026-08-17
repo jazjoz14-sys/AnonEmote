@@ -354,3 +354,148 @@ adminRouter.post('/lexicon/test', requireAdmin, async (req, res) => {
   const result = await moderate(text)
   res.json(result)
 })
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FLOW 4 — USER MANAGEMENT (view, suspend, unsuspend accounts)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * GET /api/admin/users?page=1&limit=20
+ * Returns registered users with post counts and report counts.
+ */
+adminRouter.get('/users', requireAdmin, async (req, res) => {
+  const supabase = getSupabase()
+  if (!supabase) return res.status(503).json({ error: 'Database not configured.' })
+
+  const page = Math.max(1, Number(req.query.page) || 1)
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20))
+  const offset = (page - 1) * limit
+
+  // Fetch profiles
+  const { data: profiles, error, count } = await supabase
+    .from('profiles')
+    .select('id, created_at, is_suspended, suspended_at, suspension_reason', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1)
+
+  if (error) {
+    console.error('[Admin users]', error.message)
+    return res.status(500).json({ error: 'Failed to fetch users.' })
+  }
+
+  // Enrich with post counts and report counts per user
+  const userIds = (profiles || []).map(p => p.id)
+
+  let postCounts = {}
+  let reportCounts = {}
+
+  if (userIds.length > 0) {
+    // Count posts per author
+    const { data: posts } = await supabase
+      .from('posts')
+      .select('author_id')
+      .in('author_id', userIds)
+
+    for (const p of posts || []) {
+      if (p.author_id) postCounts[p.author_id] = (postCounts[p.author_id] || 0) + 1
+    }
+
+    // Count reports against posts by each author
+    const { data: authorPosts } = await supabase
+      .from('posts')
+      .select('id, author_id')
+      .in('author_id', userIds)
+
+    const postIds = (authorPosts || []).map(p => p.id)
+    const postToAuthor = Object.fromEntries((authorPosts || []).map(p => [p.id, p.author_id]))
+
+    if (postIds.length > 0) {
+      const { data: reports } = await supabase
+        .from('reports')
+        .select('post_id')
+        .in('post_id', postIds)
+
+      for (const r of reports || []) {
+        const author = postToAuthor[r.post_id]
+        if (author) reportCounts[author] = (reportCounts[author] || 0) + 1
+      }
+    }
+  }
+
+  // Get email from auth.users via admin API (service role can access this)
+  let emails = {}
+  for (const profile of profiles || []) {
+    const { data: { user } } = await supabase.auth.admin.getUserById(profile.id)
+    if (user) emails[profile.id] = user.email
+  }
+
+  const users = (profiles || []).map(p => ({
+    id: p.id,
+    email: emails[p.id] || 'unknown',
+    createdAt: p.created_at,
+    isSuspended: p.is_suspended || false,
+    suspendedAt: p.suspended_at,
+    suspensionReason: p.suspension_reason,
+    postCount: postCounts[p.id] || 0,
+    reportCount: reportCounts[p.id] || 0,
+  }))
+
+  res.json({ users, total: count || 0, page, limit })
+})
+
+/**
+ * POST /api/admin/users/:id/suspend  { reason }
+ * Suspends a user account — they remain registered but cannot post.
+ */
+adminRouter.post('/users/:id/suspend', requireAdmin, async (req, res) => {
+  const supabase = getSupabase()
+  if (!supabase) return res.status(503).json({ error: 'Database not configured.' })
+
+  const { id } = req.params
+  const { reason } = req.body || {}
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      is_suspended: true,
+      suspended_at: new Date().toISOString(),
+      suspension_reason: reason || 'Suspended by administrator',
+    })
+    .eq('id', id)
+
+  if (error) {
+    console.error('[Admin suspend]', error.message)
+    return res.status(500).json({ error: 'Failed to suspend user.' })
+  }
+
+  await appendAudit({ type: 'admin_action', action: 'suspend_user', user_id: id, reason })
+  res.json({ ok: true, action: 'suspended' })
+})
+
+/**
+ * POST /api/admin/users/:id/unsuspend
+ * Lifts a suspension.
+ */
+adminRouter.post('/users/:id/unsuspend', requireAdmin, async (req, res) => {
+  const supabase = getSupabase()
+  if (!supabase) return res.status(503).json({ error: 'Database not configured.' })
+
+  const { id } = req.params
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      is_suspended: false,
+      suspended_at: null,
+      suspension_reason: null,
+    })
+    .eq('id', id)
+
+  if (error) {
+    console.error('[Admin unsuspend]', error.message)
+    return res.status(500).json({ error: 'Failed to unsuspend user.' })
+  }
+
+  await appendAudit({ type: 'admin_action', action: 'unsuspend_user', user_id: id })
+  res.json({ ok: true, action: 'unsuspended' })
+})

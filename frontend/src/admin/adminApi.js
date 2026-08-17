@@ -76,3 +76,17 @@ export const saveLexicon = (lexicon) =>
 
 export const testLexicon = (text) =>
   request('/lexicon/test', { method: 'POST', body: JSON.stringify({ text }) })
+
+
+// ── Flow 4: user management ───────────────────────────────────────────────
+export const fetchUsers = (page = 1, limit = 20) =>
+  request(`/users?page=${page}&limit=${limit}`)
+
+export const suspendUser = (userId, reason) =>
+  request(`/users/${userId}/suspend`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  })
+
+export const unsuspendUser = (userId) =>
+  request(`/users/${userId}/unsuspend`, { method: 'POST' })
