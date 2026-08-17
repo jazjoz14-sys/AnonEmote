@@ -1,20 +1,13 @@
 import { Router } from 'express'
 import rateLimit from 'express-rate-limit'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabase } from '../lib/supabase.js'
 import { moderate } from '../moderation/engine.js'
 import { appendAudit } from '../lib/storage.js'
 
 export const repliesRouter = Router()
 
-let _supabase = null
-function getSupabase() {
-  if (_supabase) return _supabase
-  const url = process.env.SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_KEY
-  if (!url || !key) return null
-  _supabase = createClient(url, key)
-  return _supabase
-}
+// Valid planet_id values — must stay in sync with the DB CHECK constraint
+const ALLOWED_PLANETS = ['joy', 'vent', 'advice', 'grief', 'anxiety', 'neutral', 'doodle']
 
 const limiter = rateLimit({
   windowMs: 5 * 60 * 1000,
@@ -74,6 +67,14 @@ repliesRouter.post('/', limiter, async (req, res) => {
 
   if (typeof content !== 'string' || content.length > 280) {
     return res.status(400).json({ error: 'Content must be 280 characters or fewer.' })
+  }
+
+  // Validate planet_id if provided — prevents 500 from DB constraint violation
+  const planet_id = (req.body || {}).planet_id
+  if (planet_id && !ALLOWED_PLANETS.includes(planet_id)) {
+    return res.status(400).json({
+      error: 'Invalid planet_id. Must be one of: joy, vent, advice, grief, anxiety, neutral, doodle'
+    })
   }
 
   // Verify the parent post exists and belongs to the advice planet

@@ -1,12 +1,15 @@
 import { Router } from 'express'
 import rateLimit from 'express-rate-limit'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabase } from '../lib/supabase.js'
 import { appendAudit } from '../lib/storage.js'
 import { reporterHash } from '../lib/reporterHash.js'
 
 export const reportsRouter = Router()
 
 const VALID_REASONS = ['harassment', 'hate_speech', 'self_harm', 'spam', 'other']
+
+// Valid planet_id values — must stay in sync with the DB CHECK constraint
+const ALLOWED_PLANETS = ['joy', 'vent', 'advice', 'grief', 'anxiety', 'neutral', 'doodle']
 
 /**
  * Report weighting. Severe categories carry more weight in the review queue's
@@ -18,16 +21,6 @@ const REASON_WEIGHT = {
   harassment: 2,
   spam: 1,
   other: 1,
-}
-
-let _supabase = null
-function getSupabase() {
-  if (_supabase) return _supabase
-  const url = process.env.SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_KEY
-  if (!url || !key) return null
-  _supabase = createClient(url, key)
-  return _supabase
 }
 
 // Reporting should be deliberate, not rapid-fire
@@ -64,6 +57,14 @@ reportsRouter.post('/', limiter, async (req, res) => {
   }
   if (note && (typeof note !== 'string' || note.length > 300)) {
     return res.status(400).json({ error: 'Note must be 300 characters or fewer.' })
+  }
+
+  // Validate planet_id if provided — prevents 500 from DB constraint violation
+  const planet_id = (req.body || {}).planet_id
+  if (planet_id && !ALLOWED_PLANETS.includes(planet_id)) {
+    return res.status(400).json({
+      error: 'Invalid planet_id. Must be one of: joy, vent, advice, grief, anxiety, neutral, doodle'
+    })
   }
 
   // Per-post network fingerprint. Prevents session-churn abuse without storing

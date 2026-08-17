@@ -43,8 +43,16 @@ function shouldRetryDb() {
   return false
 }
 
+/**
+ * Mark the database as temporarily unavailable. Retries after DB_RETRY_INTERVAL.
+ *
+ * KNOWN LIMITATION: When the DB is unavailable, audit entries fall back to the
+ * local file system (backend/data/audit-log.jsonl). On Render's free tier this
+ * file is EPHEMERAL — it is lost on every redeploy. To ensure persistent audit
+ * storage, make sure the `audit_log` table exists in Supabase.
+ */
 function markDbUnavailable() {
-  markDbUnavailable()
+  dbUnavailable = true
   dbUnavailableSince = Date.now()
 }
 

@@ -21,6 +21,20 @@ export default function DoodleModal() {
   const [status, setStatus] = useState('idle') // idle | sending | success | error
   const [errorMsg, setErrorMsg] = useState('')
 
+  /**
+   * KNOWN LIMITATION: Drawing moderation bypass
+   *
+   * Drawings bypass the AI text moderation engine because there is no image
+   * scanning capability available. The text placeholder '[drawing]' always
+   * passes the moderation filter.
+   *
+   * Backstop: The community report system (same thresholds and admin review
+   * workflow as text posts) handles inappropriate drawings. Multiple independent
+   * reports trigger auto-quarantine.
+   *
+   * This does NOT affect text posts — those still go through the full three-layer
+   * hybrid moderation pipeline (crisis → vernacular → Perspective API).
+   */
   const handleSubmit = async () => {
     if (!drawing || status === 'sending') return
     setStatus('sending')

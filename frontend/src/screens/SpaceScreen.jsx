@@ -198,6 +198,7 @@ export default function SpaceScreen() {
   } = useAppStore()
   const controlsRef = useRef()
   const [contextLost, setContextLost] = useState(false)
+  const [postsLoading, setPostsLoading] = useState(true)
 
   // Broadcast our presence and receive other users' avatar states
   const { peers } = usePresence()
@@ -218,6 +219,7 @@ export default function SpaceScreen() {
         .order('created_at', { ascending: false })
         .limit(200)
       if (!error && data) setPosts(data)
+      setPostsLoading(false)
     }
 
     fetchPosts()
@@ -363,7 +365,7 @@ export default function SpaceScreen() {
       </Canvas>
 
       <HUD peerCount={peers.length} />
-      {selectedPlanet && <PlanetInfoPanel />}
+      {selectedPlanet && <PlanetInfoPanel postsLoading={postsLoading} />}
 
       {/* Visible recovery prompt instead of a silently frozen scene */}
       {contextLost && (

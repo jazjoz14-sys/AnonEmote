@@ -1,20 +1,10 @@
 import { Router } from 'express'
 import rateLimit from 'express-rate-limit'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabase } from '../lib/supabase.js'
 import { login, logout, requireAdmin, activeSessionCount } from '../middleware/adminAuth.js'
 import { getLexicon, saveLexicon, appendAudit, readAudit, storageMode } from '../lib/storage.js'
 
 export const adminRouter = Router()
-
-let _supabase = null
-function getSupabase() {
-  if (_supabase) return _supabase
-  const url = process.env.SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_KEY
-  if (!url || !key) return null
-  _supabase = createClient(url, key)
-  return _supabase
-}
 
 // Brute-force protection on the login endpoint
 const loginLimiter = rateLimit({

@@ -59,11 +59,22 @@ export default function AuthScreen() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
-        // Auth state change will be picked up by the store
-        setPhase('avatar')
+        // Check if user was navigating from a planet selection
+        const { pendingPlanetId, clearPendingPlanetId } = useAppStore.getState()
+        if (pendingPlanetId) {
+          clearPendingPlanetId()
+          setPhase('space')
+        } else {
+          setPhase('avatar')
+        }
       }
     } catch (err) {
-      setError(err.message || 'Something went wrong.')
+      const msg = err.message || 'Something went wrong.'
+      if (/email.*not.*confirmed/i.test(msg)) {
+        setError('Please check your email to confirm your account before signing in.')
+      } else {
+        setError(msg)
+      }
     } finally {
       setLoading(false)
     }

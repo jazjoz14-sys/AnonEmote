@@ -1,21 +1,14 @@
 import { Router } from 'express'
 import rateLimit from 'express-rate-limit'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabase } from '../lib/supabase.js'
 
 export const reactionsRouter = Router()
 
 // Must stay in sync with the DB CHECK constraint and frontend/src/data/reactions.js
 const ALLOWED_EMOJI = ['🫂', '💙', '😢', '🌱', '✨']
 
-let _supabase = null
-function getSupabase() {
-  if (_supabase) return _supabase
-  const url = process.env.SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_KEY
-  if (!url || !key) return null
-  _supabase = createClient(url, key)
-  return _supabase
-}
+// Valid planet_id values — must stay in sync with the DB CHECK constraint
+const ALLOWED_PLANETS = ['joy', 'vent', 'advice', 'grief', 'anxiety', 'neutral', 'doodle']
 
 const limiter = rateLimit({
   windowMs: 60 * 1000,
@@ -90,6 +83,14 @@ reactionsRouter.post('/', limiter, async (req, res) => {
     return res.status(400).json({ error: 'Only approved emoji reactions are allowed.' })
   }
 
+  // Validate planet_id if provided — prevents 500 from DB constraint violation
+  const planet_id = req.body.planet_id
+  if (planet_id && !ALLOWED_PLANETS.includes(planet_id)) {
+    return res.status(400).json({
+      error: 'Invalid planet_id. Must be one of: joy, vent, advice, grief, anxiety, neutral, doodle'
+    })
+  }
+
   // Look up any existing reaction from this session on this post
   const { data: existing, error: findErr } = await supabase
     .from('reactions')
@@ -126,27 +127,18 @@ reactionsRouter.post('/', limiter, async (req, res) => {
     return res.json({ action: 'switched', emoji })
   }
 
-  // None yet → add
-  const { error } = await supabase
+  // None yet → add (atomic upsert eliminates race window between SELECT and INSERT)
+  const { data: upserted, error: upsertErr } = await supabase
     .from('reactions')
-    .insert({ post_id, session_id, emoji })
+    .upsert(
+      { post_id, session_id, emoji },
+      { onConflict: 'post_id,session_id', ignoreDuplicates: false }
+    )
+    .select('id, emoji')
+    .single()
 
-  if (error) {
-    // Handle race condition: if another request already inserted a reaction
-    // for this session+post, treat it as a switch instead of failing
-    if (error.code === '23505') { // unique_violation
-      const { error: updateErr } = await supabase
-        .from('reactions')
-        .update({ emoji })
-        .eq('post_id', post_id)
-        .eq('session_id', session_id)
-      if (updateErr) {
-        console.error('[Reactions RACE UPDATE]', updateErr.message)
-        return res.status(500).json({ error: 'Failed to save reaction.' })
-      }
-      return res.json({ action: 'switched', emoji })
-    }
-    console.error('[Reactions INSERT]', error.message)
+  if (upsertErr) {
+    console.error('[Reactions UPSERT]', upsertErr.message)
     return res.status(500).json({ error: 'Failed to add reaction.' })
   }
 

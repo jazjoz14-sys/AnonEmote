@@ -14,7 +14,7 @@ const PANEL_W = isSmallScreen ? Math.min(360, window.innerWidth - 16) : 320
  *
  * Starts docked near the right edge but can be moved anywhere on screen.
  */
-export default function PlanetInfoPanel() {
+export default function PlanetInfoPanel({ postsLoading = false }) {
   const {
     selectedPlanet,
     setSelectedPlanet,
@@ -24,6 +24,7 @@ export default function PlanetInfoPanel() {
     sessionId,
     mergeReactions,
     isAuthenticated,
+    setPendingPlanetId,
   } = useAppStore()
   const [showAuthPrompt, setShowAuthPrompt] = useState(false)
 
@@ -108,9 +109,15 @@ export default function PlanetInfoPanel() {
         {/* Posts */}
         <div className="flex-1 overflow-y-auto flex flex-col gap-2 min-h-0">
           {planetPosts.length === 0 ? (
-            <p className="text-slate-500 text-sm text-center py-4">
-              No posts yet. Be the first to share.
-            </p>
+            postsLoading ? (
+              <p className="text-slate-500 text-sm text-center py-4">
+                Loading posts...
+              </p>
+            ) : (
+              <p className="text-slate-500 text-sm text-center py-4">
+                No posts yet. Be the first to share.
+              </p>
+            )
           ) : (
             planetPosts.map((post) => (
               <div
@@ -211,9 +218,15 @@ export default function PlanetInfoPanel() {
         style={{ touchAction: 'pan-y' }}
       >
         {planetPosts.length === 0 ? (
-          <p className="text-slate-500 text-sm text-center py-6">
-            No posts yet. Be the first to share.
-          </p>
+          postsLoading ? (
+            <p className="text-slate-500 text-sm text-center py-6">
+              Loading posts...
+            </p>
+          ) : (
+            <p className="text-slate-500 text-sm text-center py-6">
+              No posts yet. Be the first to share.
+            </p>
+          )
         ) : (
           planetPosts.map((post) => (
             <div
@@ -260,7 +273,12 @@ export default function PlanetInfoPanel() {
             Create a free account to post, reply, and react. Your identity stays anonymous to other users.
           </p>
           <button
-            onClick={() => { setShowAuthPrompt(false); setPhase('auth') }}
+            onClick={() => { 
+              setShowAuthPrompt(false)
+              // Save pendingPlanetId so AuthScreen can restore planet after login
+              setPendingPlanetId(selectedPlanet.id)
+              setPhase('auth') 
+            }}
             className="w-full py-3 rounded-sm text-xs tracking-[0.15em] uppercase font-medium
                        text-white border border-white/30
                        hover:bg-white hover:text-[#050510] transition-all"

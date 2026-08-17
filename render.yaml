@@ -38,3 +38,5 @@ services:
       # Must match your deployed frontend origin exactly (no trailing slash)
       - key: CORS_ORIGIN
         sync: false
+      - key: ADMIN_ENABLED
+        sync: false

@@ -274,12 +274,12 @@ function PlanetCarousel() {
     }
   }, [])
 
-  // Height = 7 panels worth of scroll distance so the user has room to scroll through all planets
+  // Height = ~400vh scroll distance (7 planets × 57vh each) for a proportional scrolling experience
   return (
     <section
       ref={sectionRef}
       className="relative z-10"
-      style={{ height: `${PLANETS.length * 100}vh` }}
+      style={{ height: `${Math.round(PLANETS.length * 57)}vh` }}
     >
       {/* Sticky container — stays on screen while user scrolls through the height */}
       <div className="sticky top-0 h-screen overflow-hidden">

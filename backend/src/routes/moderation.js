@@ -1,21 +1,10 @@
 import { Router } from 'express'
 import rateLimit from 'express-rate-limit'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabase } from '../lib/supabase.js'
 import { moderate } from '../moderation/engine.js'
 import { appendAudit } from '../lib/storage.js'
 
 export const moderationRouter = Router()
-
-// Lazy Supabase client
-let _supabase = null
-function getSupabase() {
-  if (_supabase) return _supabase
-  const url = process.env.SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_KEY
-  if (!url || !key) return null
-  _supabase = createClient(url, key)
-  return _supabase
-}
 
 // Rate limiting: max 20 requests per minute per IP
 const limiter = rateLimit({

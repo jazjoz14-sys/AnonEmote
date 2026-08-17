@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { getSupabase } from '../lib/supabase.js'
 
 /**
  * verifyAuth — Express middleware that extracts and verifies a Supabase JWT.
@@ -14,16 +14,6 @@ import { createClient } from '@supabase/supabase-js'
  * This middleware does NOT block the request — routes decide whether to
  * require auth or allow guests. This lets guest users still read posts.
  */
-
-let _supabase = null
-function getSupabase() {
-  if (_supabase) return _supabase
-  const url = process.env.SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_KEY
-  if (!url || !key) return null
-  _supabase = createClient(url, key)
-  return _supabase
-}
 
 export async function verifyAuth(req, res, next) {
   req.userId = null

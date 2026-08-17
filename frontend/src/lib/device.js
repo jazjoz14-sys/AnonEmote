@@ -18,6 +18,37 @@ export const isSmallScreen = window.innerWidth < 768
 export const isLowEnd = isMobile || isSmallScreen
 
 /**
+ * Attempt to read the GPU renderer string via WebGL debug info.
+ * Returns the unmasked renderer string or null if unavailable.
+ */
+function detectGpuRenderer() {
+  try {
+    const canvas = document.createElement('canvas')
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
+    if (!gl) return null
+    const ext = gl.getExtension('WEBGL_debug_renderer_info')
+    if (!ext) return null
+    const renderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)
+    // Clean up the WebGL context to avoid hitting browser limits
+    const loseCtx = gl.getExtension('WEBGL_lose_context')
+    if (loseCtx) loseCtx.loseContext()
+    return renderer || null
+  } catch {
+    return null
+  }
+}
+
+const gpuRenderer = detectGpuRenderer()
+
+/**
+ * True when we detect a dedicated desktop GPU that can handle shadows.
+ * ANGLE, SwiftShader, and llvmpipe are software/translation layers that
+ * have known instability with cube shadow maps.
+ */
+const isCapableDesktopGpu = gpuRenderer &&
+  !/ANGLE|SwiftShader|llvmpipe/i.test(gpuRenderer)
+
+/**
  * Scene quality tier.
  *
  *   'high'   — desktop with a real GPU (NVIDIA, known-stable AMD)
@@ -28,7 +59,9 @@ export const qualityTier = isSmallScreen
   ? 'low'
   : isMobile
     ? 'medium'
-    : 'medium'  // Default to medium until we can confirm shadows are stable
+    : isCapableDesktopGpu
+      ? 'high'
+      : 'medium'
 
 /**
  * Derived scene parameters that scale with quality tier.

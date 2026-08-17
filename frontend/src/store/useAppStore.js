@@ -70,6 +70,14 @@ const useAppStore = create((set, get) => ({
     // This just selects the planet for camera focus.
   }),
 
+  // ── Pending Planet (preserves selection across auth flow) ────────────────
+  // When an unauthenticated user clicks "Sign In / Register" from a planet,
+  // the planet ID is saved here so we can return them to 'space' after login
+  // instead of sending them to the avatar screen.
+  pendingPlanetId: null,
+  setPendingPlanetId: (id) => set({ pendingPlanetId: id }),
+  clearPendingPlanetId: () => set({ pendingPlanetId: null }),
+
   // ── Live planet world positions (written every frame by EmotionPlanet) ────
   // { [planetId]: THREE.Vector3 } — plain object, not reactive (read via getState)
   planetPositions: {},

@@ -10,7 +10,8 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "migrate": "node scripts/migrate.js"
+    "migrate": "node scripts/migrate.js",
+    "test": "vitest --run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.43.4",
@@ -21,5 +22,9 @@
     "helmet": "^7.1.0",
     "pg": "^8.13.1",
     "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "fast-check": "^4.9.0",
+    "vitest": "^4.1.10"
   }
 }
