@@ -52,6 +52,12 @@ moderationRouter.post('/', limiter, async (req, res) => {
     return res.status(400).json({ error: 'planet_id is required.' })
   }
 
+  // Validate planet_id against allowed list
+  const VALID_PLANETS = ['joy', 'vent', 'advice', 'grief', 'anxiety', 'neutral', 'doodle']
+  if (!VALID_PLANETS.includes(pid)) {
+    return res.status(400).json({ error: `Invalid planet_id. Must be one of: ${VALID_PLANETS.join(', ')}` })
+  }
+
   // Run hybrid moderation (local keywords + Perspective API)
   const result = await moderate(text)
 

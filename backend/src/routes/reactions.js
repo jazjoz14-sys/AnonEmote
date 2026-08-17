@@ -132,6 +132,20 @@ reactionsRouter.post('/', limiter, async (req, res) => {
     .insert({ post_id, session_id, emoji })
 
   if (error) {
+    // Handle race condition: if another request already inserted a reaction
+    // for this session+post, treat it as a switch instead of failing
+    if (error.code === '23505') { // unique_violation
+      const { error: updateErr } = await supabase
+        .from('reactions')
+        .update({ emoji })
+        .eq('post_id', post_id)
+        .eq('session_id', session_id)
+      if (updateErr) {
+        console.error('[Reactions RACE UPDATE]', updateErr.message)
+        return res.status(500).json({ error: 'Failed to save reaction.' })
+      }
+      return res.json({ action: 'switched', emoji })
+    }
     console.error('[Reactions INSERT]', error.message)
     return res.status(500).json({ error: 'Failed to add reaction.' })
   }
