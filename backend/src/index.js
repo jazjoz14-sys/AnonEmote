@@ -47,9 +47,9 @@ app.use(cors({
     const clean = origin.replace(/\/+$/, '')
     if (allowedOrigins.includes(clean)) return callback(null, true)
 
-    // Allow Vercel preview deployments for this project without having to add
-    // every generated URL by hand.
-    if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(clean)) {
+    // Allow Vercel preview deployments for this specific project only.
+    // Matches: anon-emote-frontend-*.vercel.app and anonemoteproject.vercel.app
+    if (/^https:\/\/(anon-emote-frontend[a-z0-9-]*|anonemoteproject)\.vercel\.app$/i.test(clean)) {
       return callback(null, true)
     }
 

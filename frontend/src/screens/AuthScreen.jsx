@@ -1,18 +1,17 @@
 import React, { useState } from 'react'
 import useAppStore from '../store/useAppStore'
-import useAuth from '../hooks/useAuth'
+import { supabase } from '../lib/supabase'
 
 /**
- * AuthScreen — login/register gate.
+ * AuthScreen — login/register gate with password reset.
  *
  * Users can either sign up / sign in to get full posting access,
  * or continue as a guest (view-only mode in the star system).
  */
 export default function AuthScreen() {
   const { setPhase } = useAppStore()
-  const { signUp, signIn } = useAuth()
 
-  const [mode, setMode] = useState('login') // 'login' | 'register'
+  const [mode, setMode] = useState('login') // 'login' | 'register' | 'reset'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -25,8 +24,13 @@ export default function AuthScreen() {
     setError('')
     setSuccess('')
 
-    if (!email.trim() || !password.trim()) {
-      setError('Email and password are required.')
+    if (!email.trim()) {
+      setError('Email is required.')
+      return
+    }
+
+    if (mode !== 'reset' && !password.trim()) {
+      setError('Password is required.')
       return
     }
 
@@ -42,13 +46,20 @@ export default function AuthScreen() {
 
     setLoading(true)
     try {
-      if (mode === 'register') {
-        await signUp(email, password)
-        setSuccess('Account created! Check your email to confirm, or sign in directly.')
+      if (mode === 'reset') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email)
+        if (error) throw error
+        setSuccess('Password reset link sent! Check your email.')
+        setMode('login')
+      } else if (mode === 'register') {
+        const { error } = await supabase.auth.signUp({ email, password })
+        if (error) throw error
+        setSuccess('Account created! Check your email to confirm, then sign in.')
         setMode('login')
       } else {
-        await signIn(email, password)
-        // Auth state change will be picked up by the App
+        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        if (error) throw error
+        // Auth state change will be picked up by the store
         setPhase('avatar')
       }
     } catch (err) {
@@ -66,12 +77,14 @@ export default function AuthScreen() {
         <div className="flex flex-col items-center gap-3">
           <img src="/icons/logo.png" alt="AnonEmote" className="w-16 h-16 opacity-90" draggable={false} />
           <h1 className="text-2xl font-bold text-white tracking-tight">
-            {mode === 'login' ? 'Welcome back' : 'Create account'}
+            {mode === 'login' ? 'Welcome back' : mode === 'register' ? 'Create account' : 'Reset password'}
           </h1>
           <p className="text-slate-500 text-xs text-center leading-relaxed">
             {mode === 'login'
               ? 'Sign in to broadcast, react, and reply.'
-              : 'Your email is private — other users only see your avatar.'}
+              : mode === 'register'
+                ? 'Your email is private — other users only see your avatar.'
+                : 'Enter your email and we\'ll send a reset link.'}
           </p>
         </div>
 
@@ -88,17 +101,19 @@ export default function AuthScreen() {
                        transition-colors"
             autoComplete="email"
           />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            className="w-full px-4 py-3 rounded-sm text-sm text-white
-                       bg-white/[0.03] border border-white/[0.1]
-                       placeholder-slate-600 focus:outline-none focus:border-white/25
-                       transition-colors"
-            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-          />
+          {mode !== 'reset' && (
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+              className="w-full px-4 py-3 rounded-sm text-sm text-white
+                         bg-white/[0.03] border border-white/[0.1]
+                         placeholder-slate-600 focus:outline-none focus:border-white/25
+                         transition-colors"
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+            />
+          )}
           {mode === 'register' && (
             <input
               type="password"
@@ -129,7 +144,7 @@ export default function AuthScreen() {
                        disabled:opacity-40 disabled:cursor-not-allowed
                        transition-all duration-200 mt-2"
           >
-            {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Create Account'}
+            {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : mode === 'register' ? 'Create Account' : 'Send Reset Link'}
           </button>
         </form>
 
@@ -139,8 +154,17 @@ export default function AuthScreen() {
             onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); setSuccess('') }}
             className="text-xs text-slate-400 hover:text-white transition-colors"
           >
-            {mode === 'login' ? "Don't have an account? Register" : 'Already have an account? Sign in'}
+            {mode === 'login' ? "Don't have an account? Register" : mode === 'register' ? 'Already have an account? Sign in' : 'Back to sign in'}
           </button>
+
+          {mode === 'login' && (
+            <button
+              onClick={() => { setMode('reset'); setError(''); setSuccess('') }}
+              className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              Forgot password?
+            </button>
+          )}
 
           {/* Guest access — make it clear and visible */}
           <button

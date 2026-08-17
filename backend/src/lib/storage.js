@@ -26,8 +26,27 @@ const CATEGORIES = ['crisis', 'toxic', 'allow']
 
 let lexiconCache = null
 let _supabase = null
-/** Set true once a DB call fails, so we stop retrying on every request. */
+/**
+ * Set true when a DB call fails. Retries every 5 minutes instead of
+ * permanently falling back to file storage after one blip.
+ */
 let dbUnavailable = false
+let dbUnavailableSince = 0
+const DB_RETRY_INTERVAL = 5 * 60 * 1000 // 5 minutes
+
+function shouldRetryDb() {
+  if (!dbUnavailable) return true
+  if (Date.now() - dbUnavailableSince > DB_RETRY_INTERVAL) {
+    dbUnavailable = false // Reset — allow one retry
+    return true
+  }
+  return false
+}
+
+function markDbUnavailable() {
+  markDbUnavailable()
+  dbUnavailableSince = Date.now()
+}
 
 function getSupabase() {
   if (_supabase) return _supabase
@@ -40,7 +59,7 @@ function getSupabase() {
 
 /** Which backing store is in use — surfaced on the admin dashboard. */
 export function storageMode() {
-  if (dbUnavailable || !getSupabase()) return 'file'
+  if (!shouldRetryDb() || !getSupabase()) return 'file'
   return 'database'
 }
 
@@ -63,7 +82,7 @@ export async function getLexicon() {
 
   const supabase = getSupabase()
 
-  if (supabase && !dbUnavailable) {
+  if (supabase && shouldRetryDb()) {
     const { data, error } = await supabase
       .from('filter_lexicon')
       .select('category, terms')
@@ -80,7 +99,7 @@ export async function getLexicon() {
     }
 
     console.warn('[Storage] lexicon DB read failed, falling back to file:', error?.message)
-    dbUnavailable = true
+    markDbUnavailable()
   }
 
   // File fallback
@@ -118,7 +137,7 @@ export async function saveLexicon(next) {
   const supabase = getSupabase()
   let persisted = false
 
-  if (supabase && !dbUnavailable) {
+  if (supabase && shouldRetryDb()) {
     const rows = CATEGORIES.map((category) => ({
       category,
       terms: payload[category],
@@ -131,7 +150,7 @@ export async function saveLexicon(next) {
 
     if (error) {
       console.warn('[Storage] lexicon DB write failed, falling back to file:', error.message)
-      dbUnavailable = true
+      markDbUnavailable()
     } else {
       persisted = true
     }
@@ -164,14 +183,14 @@ export async function appendAudit(entry) {
   const { type = 'event', ...payload } = entry || {}
   const supabase = getSupabase()
 
-  if (supabase && !dbUnavailable) {
+  if (supabase && shouldRetryDb()) {
     const { error } = await supabase
       .from('audit_log')
       .insert({ type, payload })
 
     if (!error) return
     console.warn('[Storage] audit DB write failed, falling back to file:', error.message)
-    dbUnavailable = true
+    markDbUnavailable()
   }
 
   try {
@@ -190,7 +209,7 @@ export async function readAudit({ limit = 200, type } = {}) {
   const capped = Math.min(limit, 1000)
   const supabase = getSupabase()
 
-  if (supabase && !dbUnavailable) {
+  if (supabase && shouldRetryDb()) {
     let query = supabase
       .from('audit_log')
       .select('ts, type, payload')
@@ -207,7 +226,7 @@ export async function readAudit({ limit = 200, type } = {}) {
     }
 
     console.warn('[Storage] audit DB read failed, falling back to file:', error?.message)
-    dbUnavailable = true
+    markDbUnavailable()
   }
 
   let raw
