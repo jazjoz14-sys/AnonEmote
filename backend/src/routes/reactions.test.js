@@ -1,5 +1,13 @@
 /**
- * Bug Condition Exploration Tests: Reactions Route
+ * Reactions Route Tests
+ *
+ * Section 1: Validation Tests (Task 5.2)
+ * **Validates: Requirements 3.3**
+ * - Invalid emoji → 400 with 'Only approved emoji reactions are allowed.'
+ * - Missing required fields → 400
+ * - DB not configured → 503
+ *
+ * Section 2: Bug Condition Exploration Tests
  *
  * Test Case 3: Reaction Race Condition (Bug #5)
  * **Validates: Requirements 1.5**
@@ -17,6 +25,221 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import * as fc from 'fast-check'
+import { createMockReq, createMockRes, createMockSupabase } from '../../../tests/helpers.js'
+
+// Mock the supabase module so we can control getSupabase() return value
+vi.mock('../lib/supabase.js', () => ({
+  getSupabase: vi.fn(),
+}))
+
+import { getSupabase } from '../lib/supabase.js'
+
+// ── Validation Tests (Task 5.2, Requirement 3.3) ────────────────────────────
+
+describe('Reactions Route Validation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  describe('POST /api/reactions — invalid emoji', () => {
+    it('should return 400 with error message for unapproved emoji', async () => {
+      /**
+       * **Validates: Requirements 3.3**
+       */
+      const mockSupabase = createMockSupabase()
+      getSupabase.mockReturnValue(mockSupabase)
+
+      // Dynamically import the router handler
+      const { reactionsRouter } = await import('./reactions.js')
+
+      const req = createMockReq({
+        method: 'POST',
+        body: {
+          post_id: '123e4567-e89b-12d3-a456-426614174000',
+          session_id: '123e4567-e89b-12d3-a456-426614174001',
+          emoji: '👎', // Not in the allowed set
+        },
+      })
+      const res = createMockRes()
+
+      // Find the POST handler from the router stack
+      const postHandler = findRouteHandler(reactionsRouter, 'post', '/')
+      await postHandler(req, res)
+
+      expect(res.statusCode).toBe(400)
+      expect(res._json).toEqual({ error: 'Only approved emoji reactions are allowed.' })
+    })
+
+    it('should return 400 for arbitrary text as emoji', async () => {
+      /**
+       * **Validates: Requirements 3.3**
+       */
+      const mockSupabase = createMockSupabase()
+      getSupabase.mockReturnValue(mockSupabase)
+
+      const { reactionsRouter } = await import('./reactions.js')
+
+      const req = createMockReq({
+        method: 'POST',
+        body: {
+          post_id: '123e4567-e89b-12d3-a456-426614174000',
+          session_id: '123e4567-e89b-12d3-a456-426614174001',
+          emoji: 'not-an-emoji',
+        },
+      })
+      const res = createMockRes()
+
+      const postHandler = findRouteHandler(reactionsRouter, 'post', '/')
+      await postHandler(req, res)
+
+      expect(res.statusCode).toBe(400)
+      expect(res._json).toEqual({ error: 'Only approved emoji reactions are allowed.' })
+    })
+  })
+
+  describe('POST /api/reactions — missing required fields', () => {
+    it('should return 400 when post_id is missing', async () => {
+      /**
+       * **Validates: Requirements 3.3**
+       */
+      const mockSupabase = createMockSupabase()
+      getSupabase.mockReturnValue(mockSupabase)
+
+      const { reactionsRouter } = await import('./reactions.js')
+
+      const req = createMockReq({
+        method: 'POST',
+        body: {
+          session_id: '123e4567-e89b-12d3-a456-426614174001',
+          emoji: '🫂',
+        },
+      })
+      const res = createMockRes()
+
+      const postHandler = findRouteHandler(reactionsRouter, 'post', '/')
+      await postHandler(req, res)
+
+      expect(res.statusCode).toBe(400)
+      expect(res._json.error).toContain('required')
+    })
+
+    it('should return 400 when session_id is missing', async () => {
+      /**
+       * **Validates: Requirements 3.3**
+       */
+      const mockSupabase = createMockSupabase()
+      getSupabase.mockReturnValue(mockSupabase)
+
+      const { reactionsRouter } = await import('./reactions.js')
+
+      const req = createMockReq({
+        method: 'POST',
+        body: {
+          post_id: '123e4567-e89b-12d3-a456-426614174000',
+          emoji: '🫂',
+        },
+      })
+      const res = createMockRes()
+
+      const postHandler = findRouteHandler(reactionsRouter, 'post', '/')
+      await postHandler(req, res)
+
+      expect(res.statusCode).toBe(400)
+      expect(res._json.error).toContain('required')
+    })
+
+    it('should return 400 when emoji is missing', async () => {
+      /**
+       * **Validates: Requirements 3.3**
+       */
+      const mockSupabase = createMockSupabase()
+      getSupabase.mockReturnValue(mockSupabase)
+
+      const { reactionsRouter } = await import('./reactions.js')
+
+      const req = createMockReq({
+        method: 'POST',
+        body: {
+          post_id: '123e4567-e89b-12d3-a456-426614174000',
+          session_id: '123e4567-e89b-12d3-a456-426614174001',
+        },
+      })
+      const res = createMockRes()
+
+      const postHandler = findRouteHandler(reactionsRouter, 'post', '/')
+      await postHandler(req, res)
+
+      expect(res.statusCode).toBe(400)
+      expect(res._json.error).toContain('required')
+    })
+  })
+
+  describe('POST /api/reactions — DB not configured', () => {
+    it('should return 503 when Supabase is not configured', async () => {
+      /**
+       * **Validates: Requirements 3.3**
+       */
+      getSupabase.mockReturnValue(null)
+
+      const { reactionsRouter } = await import('./reactions.js')
+
+      const req = createMockReq({
+        method: 'POST',
+        body: {
+          post_id: '123e4567-e89b-12d3-a456-426614174000',
+          session_id: '123e4567-e89b-12d3-a456-426614174001',
+          emoji: '🫂',
+        },
+      })
+      const res = createMockRes()
+
+      const postHandler = findRouteHandler(reactionsRouter, 'post', '/')
+      await postHandler(req, res)
+
+      expect(res.statusCode).toBe(503)
+      expect(res._json).toEqual({ error: 'Database not configured.' })
+    })
+
+    it('should return 503 for GET when Supabase is not configured', async () => {
+      /**
+       * **Validates: Requirements 3.3**
+       */
+      getSupabase.mockReturnValue(null)
+
+      const { reactionsRouter } = await import('./reactions.js')
+
+      const req = createMockReq({
+        method: 'GET',
+        query: { post_ids: '123e4567-e89b-12d3-a456-426614174000' },
+      })
+      const res = createMockRes()
+
+      const getHandler = findRouteHandler(reactionsRouter, 'get', '/')
+      await getHandler(req, res)
+
+      expect(res.statusCode).toBe(503)
+      expect(res._json).toEqual({ error: 'Database not configured.' })
+    })
+  })
+})
+
+// ── Helper: Extract route handler from Express Router ────────────────────────
+
+/**
+ * Finds a route handler from an Express Router's internal stack.
+ * Skips middleware (rate limiters, etc.) and returns the final handler.
+ */
+function findRouteHandler(router, method, path) {
+  const layer = router.stack.find(
+    (l) => l.route && l.route.path === path && l.route.methods[method]
+  )
+  if (!layer) throw new Error(`No ${method.toUpperCase()} ${path} handler found in router`)
+  // Return the last handler in the route stack (skipping middleware like rate limiter)
+  const handlers = layer.route.stack.map((s) => s.handle)
+  return handlers[handlers.length - 1]
+}
+
+// ── Bug Condition Exploration Tests (existing) ───────────────────────────────
 
 describe('Bug Condition: Reaction Race Condition (Bug #5)', () => {
   it('concurrent reactions with same session+post should not produce duplicates', async () => {

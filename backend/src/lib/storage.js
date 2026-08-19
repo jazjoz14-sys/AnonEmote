@@ -13,6 +13,7 @@ import { dirname, join } from 'path'
 import { promises as fs } from 'fs'
 import { existsSync, mkdirSync } from 'fs'
 import { createClient } from '@supabase/supabase-js'
+import { emitAudit } from './eventBus.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const DATA_DIR = join(__dirname, '..', '..', 'data')
@@ -73,7 +74,7 @@ export function storageMode() {
 
 /* ── Lexicon ──────────────────────────────────────────────────────────────── */
 
-function normaliseTerms(arr) {
+export function normaliseTerms(arr) {
   return [...new Set(
     (Array.isArray(arr) ? arr : [])
       .map((t) => String(t).toLowerCase().trim())
@@ -196,7 +197,11 @@ export async function appendAudit(entry) {
       .from('audit_log')
       .insert({ type, payload })
 
-    if (!error) return
+    if (!error) {
+      // Broadcast to SSE listeners (fire-and-forget)
+      try { emitAudit({ ts: new Date().toISOString(), type, ...payload }) } catch { /* never block persist */ }
+      return
+    }
     console.warn('[Storage] audit DB write failed, falling back to file:', error.message)
     markDbUnavailable()
   }
@@ -207,6 +212,9 @@ export async function appendAudit(entry) {
   } catch (err) {
     console.error('[Storage] audit write failed entirely:', err.message)
   }
+
+  // Broadcast to SSE listeners (fire-and-forget)
+  try { emitAudit({ ts: new Date().toISOString(), type, ...payload }) } catch { /* never block persist */ }
 }
 
 /**

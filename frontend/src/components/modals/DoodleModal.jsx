@@ -1,8 +1,10 @@
 import React, { useState } from 'react'
 import useAppStore from '../../store/useAppStore'
+import useDraggable from '../../hooks/useDraggable'
 import { apiFetch } from '../../lib/api'
-import { isSmallScreen } from '../../lib/device'
+import { useIsSmallScreen, useIsLandscape } from '../../lib/device'
 import DrawingCanvas from '../ui/DrawingCanvas'
+import ConfirmDialog from '../ui/ConfirmDialog'
 
 /**
  * DoodleModal — canvas-based post composer for the Doodle Drift planet.
@@ -13,13 +15,35 @@ import DrawingCanvas from '../ui/DrawingCanvas'
  * AI moderation cannot scan images, so drawings are not auto-moderated. The
  * community reports path handles inappropriate content — same thresholds and
  * admin review workflow as text posts.
+ *
+ * Landscape adaptation (Requirement 11.7):
+ *   - Centered card, 90% viewport width, 85dvh max height
+ *   - Canvas maintains 1:1 aspect ratio sized to fit within available space
  */
 export default function DoodleModal() {
   const { selectedPlanet, setPostModalOpen, sessionId, addPost } = useAppStore()
+  const isMobile = useIsSmallScreen()
+  const isLandscape = useIsLandscape()
 
   const [drawing, setDrawing] = useState(null)
   const [status, setStatus] = useState('idle') // idle | sending | success | error
   const [errorMsg, setErrorMsg] = useState('')
+  const [showConfirm, setShowConfirm] = useState(false)
+
+  // In landscape: canvas fits within the centered card (85dvh - header/actions ~120px)
+  // In portrait mobile: constrained to viewport width
+  const canvasSize = isLandscape && isMobile
+    ? Math.min(Math.floor(window.innerHeight * 0.85 - 120), Math.floor(window.innerWidth * 0.9 - 48))
+    : isMobile
+      ? Math.min(280, window.innerWidth - 48)
+      : 340
+
+  const PANEL_W = canvasSize + 40
+
+  const { position, isDragging, dragProps, handleProps } = useDraggable({
+    width: PANEL_W,
+    height: canvasSize + 200,
+  })
 
   /**
    * KNOWN LIMITATION: Drawing moderation bypass
@@ -74,35 +98,90 @@ export default function DoodleModal() {
   }
 
   const handleClose = () => {
+    // If the canvas has content, show confirmation dialog instead of closing immediately
+    if (drawing) {
+      setShowConfirm(true)
+      return
+    }
+    // Canvas is blank — close immediately without confirmation
+    doClose()
+  }
+
+  // Actual close logic — called when canvas is blank or user confirms discard
+  const doClose = () => {
     setPostModalOpen(false)
     setDrawing(null)
     setStatus('idle')
   }
 
-  const canvasSize = isSmallScreen
-    ? Math.min(320, window.innerWidth - 48)
-    : 360
+  // "Discard" — user confirmed they want to discard the drawing
+  const handleConfirmDiscard = () => {
+    setShowConfirm(false)
+    setDrawing(null)
+    setPostModalOpen(false)
+    setStatus('idle')
+  }
+
+  // "Keep Drawing" — user wants to return to the canvas
+  const handleCancelDiscard = () => {
+    setShowConfirm(false)
+  }
+
+  // On mobile landscape: centered card, 90% width, 85dvh
+  // On mobile portrait: fixed bottom sheet, no dragging
+  // On desktop: draggable floating panel
+  const wrapperClass = isLandscape && isMobile
+    ? 'fixed inset-0 z-50 flex items-center justify-center'
+    : isMobile
+      ? 'fixed bottom-0 left-0 right-0 z-50 glass-dark rounded-t-3xl p-4 safe-bottom animate-slide-up'
+      : 'fixed z-50 glass-dark rounded-3xl p-5 shadow-2xl shadow-black/60 animate-pop-in'
+
+  const wrapperStyle = isLandscape && isMobile
+    ? {}
+    : isMobile
+      ? { maxHeight: '90vh', border: `1px solid ${selectedPlanet?.color}44`, borderBottom: 'none' }
+      : {
+          ...dragProps.style,
+          left: position.x,
+          top: position.y,
+          width: PANEL_W,
+          maxWidth: 'calc(100vw - 24px)',
+          border: `1px solid ${selectedPlanet?.color}44`,
+          boxShadow: isDragging
+            ? '0 25px 60px rgba(0,0,0,0.7)'
+            : '0 12px 40px rgba(0,0,0,0.5)',
+        }
+
+  // Inner card for landscape mode
+  const innerCardStyle = isLandscape && isMobile
+    ? {
+        maxWidth: '90vw',
+        maxHeight: '85dvh',
+        width: PANEL_W + 'px',
+        border: `1px solid ${selectedPlanet?.color}44`,
+      }
+    : undefined
 
   return (
+    <>
     <div
-      className={isSmallScreen
-        ? 'fixed bottom-0 left-0 right-0 z-50 glass-dark rounded-t-3xl p-4 safe-bottom animate-slide-up'
-        : 'fixed z-50 glass-dark rounded-3xl p-5 shadow-2xl shadow-black/60 animate-pop-in'}
-      style={isSmallScreen
-        ? { maxHeight: '90vh', border: `1px solid ${selectedPlanet?.color}44`, borderBottom: 'none' }
-        : {
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: canvasSize + 40,
-            border: `1px solid ${selectedPlanet?.color}44`,
-          }}
+      className={wrapperClass}
+      style={wrapperStyle}
       role="dialog"
       aria-label="Draw on Doodle Drift"
+      {...(!isMobile ? dragProps : {})}
     >
-      <div className="flex flex-col gap-3">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+      <div
+        className={isLandscape && isMobile
+          ? 'glass-dark rounded-3xl p-4 shadow-2xl shadow-black/60 flex flex-col overflow-hidden'
+          : 'flex flex-col gap-3'}
+        style={innerCardStyle}
+      >
+        {/* Header — drag handle */}
+        <div
+          className="flex items-center justify-between"
+          {...(!isMobile ? handleProps : {})}
+        >
           <div className="flex items-center gap-2">
             <span className="text-2xl">🎨</span>
             <div>
@@ -165,5 +244,16 @@ export default function DoodleModal() {
         </div>
       </div>
     </div>
+
+    {/* Confirmation dialog — shown when closing with a non-blank canvas */}
+    <ConfirmDialog
+      open={showConfirm}
+      message="Discard your drawing?"
+      cancelLabel="Keep Drawing"
+      confirmLabel="Discard"
+      onCancel={handleCancelDiscard}
+      onConfirm={handleConfirmDiscard}
+    />
+    </>
   )
 }

@@ -24,9 +24,15 @@ vi.mock('./ReplyThread', () => ({
   default: ({ post }) => React.createElement('div', { 'data-testid': `reply-thread-${post.id}` }, 'replies'),
 }))
 
-// Mock device
+// Mock device (include reactive hooks added by mobile-ux-polish spec)
 vi.mock('../../lib/device', () => ({
   isSmallScreen: false,
+  isMobile: false,
+  useIsSmallScreen: () => false,
+  useViewportSize: () => ({ width: 1024, height: 768 }),
+  getIsSmallScreen: () => false,
+  qualityTier: 'high',
+  sceneConfig: { starCount: 3500, planetDetail: 4, decorEnabled: true, shadowMapSize: 1024, bloomEnabled: true, dpr: [1, 1.5] },
 }))
 
 // Mock api
@@ -65,7 +71,7 @@ let storeState = {}
 
 vi.mock('../../store/useAppStore', () => ({
   default: Object.assign(
-    () => storeState,
+    (selector) => selector ? selector(storeState) : storeState,
     { getState: () => storeState }
   ),
 }))
@@ -84,6 +90,9 @@ describe('Preservation: Post Display in PlanetInfoPanel', () => {
       sessionId: 'session-123',
       mergeReactions: vi.fn(),
       isAuthenticated: true,
+      openSheets: [],
+      registerSheet: vi.fn(),
+      unregisterSheet: vi.fn(),
     }
   })
 
@@ -116,7 +125,8 @@ describe('Preservation: Post Display in PlanetInfoPanel', () => {
 
     render(<PlanetInfoPanel />)
 
-    expect(screen.getByText('No posts yet. Be the first to share.')).toBeInTheDocument()
+    expect(screen.getByText('No posts yet')).toBeInTheDocument()
+    expect(screen.getByText(/Be the first to broadcast/i)).toBeInTheDocument()
   })
 
   it('property: for all post arrays with content, posts render with text visible', () => {

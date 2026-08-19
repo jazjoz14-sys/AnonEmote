@@ -1,8 +1,49 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        runtimeCaching: [
+          {
+            urlPattern: /\/api\/.*/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-cache',
+              networkTimeoutSeconds: 3,
+              plugins: [
+                {
+                  handlerDidError: async () =>
+                    new Response(
+                      JSON.stringify({
+                        offline: true,
+                        message: 'You appear to be offline.',
+                      }),
+                      { headers: { 'Content-Type': 'application/json' } }
+                    ),
+                },
+              ],
+            },
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'font-cache',
+              expiration: { maxEntries: 10 },
+            },
+          },
+        ],
+      },
+      manifest: false,
+    }),
+  ],
   server: {
     port: 5173,
     // Listen on all interfaces so the dev server is reachable over the LAN

@@ -70,7 +70,7 @@ const ENGLISH_FALLBACK = [
 ]
 
 /** Normalize text to defeat leet-speak and spacing evasions. */
-function normalize(text) {
+export function normalize(text) {
   return text
     .toLowerCase()
     .replace(/[@4]/g, 'a')

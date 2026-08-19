@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useRef, useState } from 'react'
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
@@ -8,10 +8,13 @@ import StarSystem from '../components/3d/StarSystem'
 import GalacticBackdrop from '../components/3d/GalacticBackdrop'
 import PeerAvatars from '../components/3d/PeerAvatars'
 import usePresence from '../hooks/usePresence'
-import { sceneConfig, isSmallScreen } from '../lib/device'
+import { sceneConfig, useIsSmallScreen, useViewportSize } from '../lib/device'
 import HUD from '../components/ui/HUD'
+import PlanetNav from '../components/ui/PlanetNav'
 import PlanetInfoPanel from '../components/ui/PlanetInfoPanel'
+import OnboardingOverlay from '../components/ui/OnboardingOverlay'
 import { supabase } from '../lib/supabase'
+import { isHintDismissed, dismissHint, HINT_PLANET_PULSE } from '../lib/hintStore'
 
 // Scratch objects — allocated once, reused every frame
 const _desiredCamPos = new THREE.Vector3()
@@ -194,18 +197,124 @@ function ContextLossGuard({ onLost }) {
 export default function SpaceScreen() {
   const {
     setPosts, selectedPlanet,
-    crisis, reportTarget,
+    crisis, reportTarget, postModalOpen,
+    onboarding, startOnboarding,
   } = useAppStore()
+  const isSmallScreen = useIsSmallScreen()
+  const { height: viewportHeight } = useViewportSize()
   const controlsRef = useRef()
   const [contextLost, setContextLost] = useState(false)
   const [postsLoading, setPostsLoading] = useState(true)
+  const onboardingActive = onboarding.active
+
+  // ─── Planet pulse hint (Req 6.2) ─────────────────────────────────────────
+  // On first Star_System entry per session, show a pulsing glow on the first
+  // planet for 5 seconds. Dismissed on click or timeout.
+  const [showPulseHint, setShowPulseHint] = useState(false)
+
+  useEffect(() => {
+    if (isHintDismissed(HINT_PLANET_PULSE)) return
+
+    // Show the pulse hint
+    setShowPulseHint(true)
+
+    // Auto-dismiss after 5 seconds
+    const timer = setTimeout(() => {
+      setShowPulseHint(false)
+      dismissHint(HINT_PLANET_PULSE)
+    }, 5000)
+
+    return () => clearTimeout(timer)
+  }, []) // run once on mount
+
+  // Dismiss pulse hint when user clicks any planet
+  const handlePulseDismiss = useCallback(() => {
+    if (showPulseHint) {
+      setShowPulseHint(false)
+      dismissHint(HINT_PLANET_PULSE)
+    }
+  }, [showPulseHint])
 
   // Broadcast our presence and receive other users' avatar states
   const { peers } = usePresence()
 
   // Only *blocking* dialogs freeze the scene. The broadcast composer is a
   // draggable floating panel, so the star system stays navigable behind it.
-  const modalOpen = crisis.open || !!reportTarget
+  // Onboarding overlay also disables planet interactions while active.
+  const modalOpen = crisis.open || !!reportTarget || onboardingActive
+
+  // ─── Viewport Budget (mobile) ──────────────────────────────────────────────
+  // Chrome budget: HUD (40px) + Nav (44px) = 84px max on mobile.
+  // PlanetInfoPanel maxHeight is calculated so:
+  //   1. It fits between HUD and Nav (viewport - 84 - safe insets)
+  //   2. The 3D canvas retains at least 15% of viewport height visible
+  //   3. Unless that would force the panel below 200px (minimum panel height)
+  //   4. Landscape (< 500px height): cap at 50% viewport height
+  const panelMaxHeight = useMemo(() => {
+    if (!isSmallScreen) return undefined // desktop uses its own layout
+
+    const HUD_HEIGHT = 40
+    const NAV_HEIGHT = 44
+    const CHROME_BUDGET = HUD_HEIGHT + NAV_HEIGHT // 84px
+    const MIN_PANEL_HEIGHT = 200
+    const MIN_CANVAS_PERCENT = 0.15
+
+    // Available space between HUD and Nav (excluding safe insets which are
+    // handled via CSS env() in the panel itself)
+    const availableSpace = viewportHeight - CHROME_BUDGET
+
+    // Canvas must retain at least 15% of viewport height visible
+    const minCanvasHeight = viewportHeight * MIN_CANVAS_PERCENT
+    let maxHeight = availableSpace - minCanvasHeight
+
+    // If enforcing 15% canvas visibility would push panel below 200px,
+    // use 200px minimum instead (canvas gets less space)
+    if (maxHeight < MIN_PANEL_HEIGHT) {
+      maxHeight = MIN_PANEL_HEIGHT
+    }
+
+    // Never exceed available space
+    if (maxHeight > availableSpace) {
+      maxHeight = availableSpace
+    }
+
+    // Landscape cap: viewport height < 500px → cap at 50% viewport height
+    if (viewportHeight < 500) {
+      const landscapeCap = viewportHeight * 0.5
+      maxHeight = Math.min(maxHeight, landscapeCap)
+    }
+
+    return `${Math.round(maxHeight)}px`
+  }, [isSmallScreen, viewportHeight])
+
+  // ─── Onboarding trigger for newly registered users ─────────────────────────
+  // If the user hasn't completed onboarding yet (no onboarding_completed_at in
+  // their metadata), start the onboarding flow. Returning users who have already
+  // completed onboarding are skipped.
+  useEffect(() => {
+    let cancelled = false
+
+    const checkOnboarding = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (cancelled) return
+
+        // Only trigger for authenticated users without onboarding completion
+        if (!user) return
+        const completedAt = user.user_metadata?.onboarding_completed_at
+        if (!completedAt) {
+          startOnboarding()
+        }
+      } catch (err) {
+        // Silently fail — onboarding is non-critical
+        console.warn('[SpaceScreen] Failed to check onboarding status:', err)
+      }
+    }
+
+    checkOnboarding()
+
+    return () => { cancelled = true }
+  }, [startOnboarding])
 
   useEffect(() => {
     let channel
@@ -274,10 +383,14 @@ export default function SpaceScreen() {
   }, [setPosts])
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full" style={{ height: isSmallScreen ? 'var(--app-height, 100dvh)' : '100%' }}>
       <Canvas
         camera={{ position: [0, 8, 40], fov: 60 }}
-        className="w-full h-full"
+        className="w-full"
+        style={{
+          height: isSmallScreen ? 'var(--content-height, calc(100dvh - 84px))' : '100%',
+          pointerEvents: modalOpen ? 'none' : 'auto',
+        }}
         // Cap pixel ratio — on high-DPI screens an uncapped dpr can allocate
         // several times more GPU memory than needed and trigger context loss.
         dpr={sceneConfig.dpr}
@@ -289,10 +402,16 @@ export default function SpaceScreen() {
           preserveDrawingBuffer: false,
           failIfMajorPerformanceCaveat: false,
         }}
-        style={{ pointerEvents: modalOpen ? 'none' : 'auto' }}
-        onPointerMissed={() => {
-          if (modalOpen) return
-          useAppStore.getState().setSelectedPlanet(null)
+        onPointerMissed={(e) => {
+          if (modalOpen || postModalOpen) return
+          // Read fresh state — postModalOpen may have just been set by a button
+          // click on the info panel that also triggered this pointer-miss
+          const state = useAppStore.getState()
+          if (state.postModalOpen) return
+          // Only deselect if the click originated on the canvas itself, not on
+          // an HTML overlay (PlanetInfoPanel, modals, etc.)
+          if (e?.target?.tagName !== 'CANVAS') return
+          state.setSelectedPlanet(null)
         }}
       >
         <Suspense fallback={null}>
@@ -365,7 +484,11 @@ export default function SpaceScreen() {
       </Canvas>
 
       <HUD peerCount={peers.length} />
-      {selectedPlanet && <PlanetInfoPanel postsLoading={postsLoading} />}
+      <PlanetNav showPulseHint={showPulseHint} onPlanetClick={handlePulseDismiss} />
+      {selectedPlanet && <PlanetInfoPanel postsLoading={postsLoading} maxHeight={panelMaxHeight} />}
+
+      {/* Onboarding tutorial overlay — renders above the 3D scene as HTML */}
+      <OnboardingOverlay />
 
       {/* Visible recovery prompt instead of a silently frozen scene */}
       {contextLost && (

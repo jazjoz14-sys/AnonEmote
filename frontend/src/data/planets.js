@@ -132,6 +132,44 @@ const BASE_PLANETS = [
 ]
 
 /**
+ * Model constraints for planet GLB assets.
+ * Applied uniformly to all planets — Maya exports must stay within these limits.
+ *
+ * @type {{ maxTris: number, maxFileSize: number }}
+ */
+const PLANET_MODEL_CONFIG = {
+  maxTris: 5000,
+  maxFileSize: 2 * 1024 * 1024, // 2 MB
+}
+
+/**
+ * Default animation configuration for planets.
+ *
+ * Planets use programmatic animation driven by useFrame. `rotationSpeed: null`
+ * signals the animation controller to inherit the derived `spinSpeed` value from
+ * orbital mechanics rather than using a fixed rate.
+ *
+ * @type {{
+ *   mode: 'programmatic' | 'clip' | 'blended',
+ *   rotationAxis: [number, number, number],
+ *   rotationSpeed: number | null,
+ *   bobAmplitude: number,
+ *   bobFrequency: number,
+ *   blendWeight: number,
+ *   activeClip: string | null
+ * }}
+ */
+const PLANET_ANIMATION_CONFIG = {
+  mode: 'programmatic',
+  rotationAxis: [0, 1, 0],   // Y-up rotation
+  rotationSpeed: null,        // null = inherit from spinSpeed (orbital calc)
+  bobAmplitude: 0,            // Planets don't bob — they orbit
+  bobFrequency: 0,
+  blendWeight: 0.5,           // Used only when mode is 'blended'
+  activeClip: null,           // Clip name from GLB; null = first clip
+}
+
+/**
  * Final planet list with derived orbital values attached.
  *
  * Resulting periods (approx):
@@ -147,6 +185,8 @@ export const PLANETS = BASE_PLANETS.map((p) => ({
   orbitSpeed: orbitalSpeed(p.orbitRadius),
   spinSpeed: spinSpeed(p.orbitRadius),
   periodSeconds: Math.round(orbitalPeriod(p.orbitRadius)),
+  model: PLANET_MODEL_CONFIG,
+  animation: PLANET_ANIMATION_CONFIG,
 }))
 
 export const getPlanetById = (id) => PLANETS.find((p) => p.id === id)

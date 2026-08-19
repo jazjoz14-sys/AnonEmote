@@ -4,13 +4,22 @@
  * The session token is held in sessionStorage so it clears when the tab
  * closes, and is sent as a Bearer header on every request.
  */
-import { apiFetch } from '../lib/api'
+import { apiFetch, apiUrl } from '../lib/api'
 
 const TOKEN_KEY = 'anonemote_admin_token'
 
 export const getToken = () => sessionStorage.getItem(TOKEN_KEY)
 export const setToken = (t) => sessionStorage.setItem(TOKEN_KEY, t)
 export const clearToken = () => sessionStorage.removeItem(TOKEN_KEY)
+
+/**
+ * Build the full SSE stream URL with the admin token in the query string.
+ * Used by the LogStream component to open an EventSource connection.
+ */
+export function getStreamUrl() {
+  const token = getToken()
+  return apiUrl(`/api/admin/stream?token=${encodeURIComponent(token)}`)
+}
 
 /**
  * Fetch wrapper that attaches auth and normalises errors.

@@ -3,6 +3,10 @@ import { useFrame } from '@react-three/fiber'
 import { Sparkles } from '@react-three/drei'
 import * as THREE from 'three'
 import useAppStore from '../../store/useAppStore'
+import { useModelLoader } from './models/useModelLoader.js'
+import { useAnimationController } from './models/useAnimationController.js'
+import AvatarGLB from './models/AvatarGLB.jsx'
+import { SHAPES } from '../../data/avatarOptions.js'
 
 /**
  * UserAvatar — the user's abstract energy form.
@@ -24,6 +28,19 @@ export default function UserAvatar({ preview = false }) {
   const size = preview ? 1 : 0.55
   const s = size * scale
 
+  // Look up shape animation config for the animation controller
+  const shapeConfig = useMemo(() => SHAPES.find((sh) => sh.id === shape), [shape])
+
+  // Load the GLB model for this avatar shape (falls back gracefully if unavailable)
+  // Skip problematic models that freeze the GPU (too many vertices / complex materials)
+  const skipGLB = shape === 'spirit'
+  const { scene: glbScene, loaded: glbLoaded } = useModelLoader(
+    skipGLB ? '__skip__' : shape, 'avatar', { fallbackColor: auraColor }
+  )
+
+  // When a GLB is loaded, useAnimationController handles rotation and bobbing
+  useAnimationController(meshRef, glbLoaded ? shapeConfig?.animation : null)
+
   // Orbit state. The centre is lerped rather than snapped so that selecting a
   // planet makes the avatar travel across to it instead of teleporting.
   const orbitAngle = useRef(0)
@@ -34,7 +51,8 @@ export default function UserAvatar({ preview = false }) {
   useFrame((state, delta) => {
     const t = state.clock.elapsedTime
 
-    if (meshRef.current) {
+    // Manual rotation/bob only when using fallback geometry (no GLB loaded)
+    if (meshRef.current && !glbLoaded) {
       meshRef.current.rotation.y = t * 0.4
       // Spirit forms tumble a little more freely than solid shapes
       meshRef.current.rotation.x = shape === 'spirit' ? Math.sin(t * 0.5) * 0.3 : t * 0.15
@@ -84,27 +102,35 @@ export default function UserAvatar({ preview = false }) {
   return (
     <group ref={groupRef}>
       {/* ── Form ───────────────────────────────────────────────────────── */}
-      <mesh ref={meshRef} scale={[s, s, s]}>
-        {shape === 'orb' && <icosahedronGeometry args={[1, 2]} />}
-        {shape === 'prism' && <octahedronGeometry args={[1.15, 0]} />}
-        {shape === 'spirit' && <capsuleGeometry args={[0.6, 0.9, 8, 16]} />}
-        {shape === 'droplet' && <sphereGeometry args={[1, 24, 16]} />}
-        {shape === 'crystal' && <dodecahedronGeometry args={[1, 0]} />}
-        {shape === 'shard' && <tetrahedronGeometry args={[1.2, 0]} />}
-        {shape === 'halo' && <torusGeometry args={[0.8, 0.3, 16, 32]} />}
-        {shape === 'knot' && <torusKnotGeometry args={[0.65, 0.22, 80, 12]} />}
-        {shape === 'nebula' && <icosahedronGeometry args={[1.1, 1]} />}
-        {shape === 'spark' && <coneGeometry args={[0.8, 1.6, 5]} />}
+      {glbLoaded && glbScene ? (
+        /* GLB model loaded — render the custom avatar mesh */
+        <group ref={meshRef}>
+          <AvatarGLB scene={glbScene} auraColor={auraColor} scale={s} />
+        </group>
+      ) : (
+        /* Fallback — existing primitive geometry (GLB unavailable or loading) */
+        <mesh ref={meshRef} scale={[s, s, s]}>
+          {shape === 'clover' && <icosahedronGeometry args={[1, 2]} />}
+          {shape === 'droplet' && <sphereGeometry args={[1, 24, 16]} />}
+          {shape === 'spirit' && <capsuleGeometry args={[0.6, 0.9, 8, 16]} />}
+          {shape === 'moon' && <sphereGeometry args={[1, 24, 16]} />}
+          {shape === 'spark' && <coneGeometry args={[0.8, 1.6, 5]} />}
+          {shape === 'crystal' && <dodecahedronGeometry args={[1, 0]} />}
+          {shape === 'heart' && <sphereGeometry args={[1, 24, 16]} />}
+          {shape === 'ribbon' && <capsuleGeometry args={[0.6, 0.9, 8, 16]} />}
+          {shape === 'ring' && <torusGeometry args={[0.8, 0.3, 16, 32]} />}
+          {shape === 'shard' && <tetrahedronGeometry args={[1.2, 0]} />}
 
-        <meshStandardMaterial
-          color={auraColor}
-          emissive={auraColor}
-          emissiveIntensity={1.5}
-          roughness={0.35}
-          metalness={0}
-          toneMapped={false}
-        />
-      </mesh>
+          <meshStandardMaterial
+            color={auraColor}
+            emissive={auraColor}
+            emissiveIntensity={1.5}
+            roughness={0.35}
+            metalness={0}
+            toneMapped={false}
+          />
+        </mesh>
+      )}
 
       {/* ── Soft aura shell ────────────────────────────────────────────── */}
       <mesh scale={[s * 1.9, s * 1.9, s * 1.9]}>

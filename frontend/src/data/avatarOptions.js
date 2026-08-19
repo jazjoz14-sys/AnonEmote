@@ -7,24 +7,123 @@
  * architecture, not just a style choice.
  */
 
+/**
+ * Default model constraints for avatar GLB files.
+ * @type {{ maxTris: number, maxFileSize: number }}
+ */
+const AVATAR_MODEL_CONFIG = { maxTris: 3000, maxFileSize: 1 * 1024 * 1024 }
+
+/**
+ * Default programmatic animation parameters for all avatar shapes.
+ * @type {{ mode: string, rotationAxis: number[], rotationSpeed: number, rotationSpeedX: number, bobAmplitude: number, bobFrequency: number, blendWeight: number, activeClip: string|null }}
+ */
+const AVATAR_ANIMATION_CONFIG = {
+  mode: 'programmatic',
+  rotationAxis: [0, 1, 0],
+  rotationSpeed: 0.4,
+  rotationSpeedX: 0.15,
+  bobAmplitude: 0.25,
+  bobFrequency: 0.9,
+  blendWeight: 0.5,
+  activeClip: null,
+}
+
 export const SHAPES = [
-  // ── Smooth forms ─────────────────────────────────────────────────────────
-  { id: 'orb',       label: 'Orb',       hint: 'Steady and whole',       icon: '⬤',  geo: 'icosahedron' },
-  { id: 'spirit',    label: 'Spirit',    hint: 'Soft and drifting',      icon: '❋',  geo: 'capsule' },
-  { id: 'droplet',   label: 'Droplet',   hint: 'Fluid and adaptive',    icon: '💧', geo: 'sphere' },
+  // ── Nature forms ─────────────────────────────────────────────────────────
+  {
+    id: 'clover',
+    label: 'Clover',
+    hint: 'Gentle and grounded',
+    icon: '🍀',
+    geo: 'icosahedron',         // fallback geometry
+    model: { ...AVATAR_MODEL_CONFIG },
+    animation: { ...AVATAR_ANIMATION_CONFIG },
+  },
+  {
+    id: 'droplet',
+    label: 'Droplet',
+    hint: 'Fluid and adaptive',
+    icon: '💧',
+    geo: 'sphere',
+    model: { ...AVATAR_MODEL_CONFIG },
+    animation: { ...AVATAR_ANIMATION_CONFIG },
+  },
+  {
+    id: 'spirit',
+    label: 'Spirit',
+    hint: 'Soft and drifting',
+    icon: '❋',
+    geo: 'capsule',
+    model: { ...AVATAR_MODEL_CONFIG },
+    animation: { ...AVATAR_ANIMATION_CONFIG },
+  },
 
-  // ── Angular forms ────────────────────────────────────────────────────────
-  { id: 'prism',     label: 'Prism',     hint: 'Sharp and faceted',      icon: '◆',  geo: 'octahedron' },
-  { id: 'crystal',   label: 'Crystal',   hint: 'Structured clarity',     icon: '💎', geo: 'dodecahedron' },
-  { id: 'shard',     label: 'Shard',     hint: 'Raw and unpolished',     icon: '🔷', geo: 'tetrahedron' },
+  // ── Celestial forms ──────────────────────────────────────────────────────
+  {
+    id: 'moon',
+    label: 'Moon',
+    hint: 'Calm and reflective',
+    icon: '🌙',
+    geo: 'sphere',
+    model: { ...AVATAR_MODEL_CONFIG },
+    animation: { ...AVATAR_ANIMATION_CONFIG },
+  },
+  {
+    id: 'spark',
+    label: 'Spark',
+    hint: 'Bright and fleeting',
+    icon: '✦',
+    geo: 'cone',
+    model: { ...AVATAR_MODEL_CONFIG },
+    animation: { ...AVATAR_ANIMATION_CONFIG },
+  },
+  {
+    id: 'crystal',
+    label: 'Crystal',
+    hint: 'Structured clarity',
+    icon: '💎',
+    geo: 'dodecahedron',
+    model: { ...AVATAR_MODEL_CONFIG },
+    animation: { ...AVATAR_ANIMATION_CONFIG },
+  },
 
-  // ── Ring / toroid forms ──────────────────────────────────────────────────
-  { id: 'halo',      label: 'Halo',      hint: 'Open and receptive',     icon: '◎',  geo: 'torus' },
-  { id: 'knot',      label: 'Knot',      hint: 'Intertwined layers',     icon: '∞',  geo: 'torusKnot' },
-
-  // ── Irregular forms ──────────────────────────────────────────────────────
-  { id: 'nebula',    label: 'Nebula',    hint: 'Expanding outward',      icon: '☁️', geo: 'icosahedronLow' },
-  { id: 'spark',     label: 'Spark',     hint: 'Bright and fleeting',    icon: '✦',  geo: 'cone' },
+  // ── Symbolic forms ───────────────────────────────────────────────────────
+  {
+    id: 'heart',
+    label: 'Heart',
+    hint: 'Warm and caring',
+    icon: '💗',
+    geo: 'sphere',
+    model: { ...AVATAR_MODEL_CONFIG },
+    animation: { ...AVATAR_ANIMATION_CONFIG },
+  },
+  {
+    id: 'ribbon',
+    label: 'Ribbon',
+    hint: 'Flowing and free',
+    icon: '🎀',
+    geo: 'capsule',
+    model: { ...AVATAR_MODEL_CONFIG },
+    animation: { ...AVATAR_ANIMATION_CONFIG },
+  },
+  {
+    id: 'ring',
+    label: 'Ring',
+    hint: 'Connected and whole',
+    icon: '◎',
+    geo: 'torus',
+    model: { ...AVATAR_MODEL_CONFIG },
+    animation: { ...AVATAR_ANIMATION_CONFIG },
+  },
+  {
+    id: 'shard',
+    label: 'Shard',
+    hint: 'Raw and unpolished',
+    icon: '🔷',
+    geo: 'tetrahedron',
+    model: { ...AVATAR_MODEL_CONFIG },
+    animation: { ...AVATAR_ANIMATION_CONFIG },
+  },
 ]
 
 export const AURA_COLORS = [
@@ -62,7 +161,7 @@ export const PARTICLE_EFFECTS = [
 
 /** Defaults used on first visit. */
 export const DEFAULT_AVATAR = {
-  shape: 'orb',
+  shape: 'spirit',
   auraColor: '#C4B5FD',
   particles: 'stardust',
   scale: 1,

@@ -4,14 +4,33 @@
 
 @layer base {
   :root {
-    /* JS-driven fallback for browsers without dvh support (set in main.jsx) */
+    /* JS-driven fallback for browsers without dvh support (set by initViewportProperties in main.jsx) */
     --app-height: 100vh;
+
+    /* ── Global z-index stacking hierarchy ──────────────────────────────────── */
+    --z-canvas: 0;       /* 3D Canvas */
+    --z-hud: 20;         /* HUD TopBar, Planet Nav */
+    --z-panel: 30;       /* PlanetInfoPanel */
+    --z-modal: 50;       /* PostModal / DoodleModal */
+    --z-report: 90;      /* ReportModal */
+    --z-crisis: 100;     /* CrisisModal */
+  }
+
+  @supports (height: 100dvh) {
+    :root {
+      --app-height: 100dvh;
+    }
   }
 
   * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+  }
+
+  html {
+    /* Prevent pull-to-refresh and rubber-banding on the document level */
+    overscroll-behavior: none;
   }
 
   body {
@@ -27,7 +46,7 @@
     width: 100vw;
     overflow: hidden;
     overscroll-behavior: none;
-    /* Prevent pull-to-refresh gesture on Chrome Android */
+    /* Suppress double-tap zoom and 300ms tap delay on mobile without blocking scroll/pinch */
     touch-action: manipulation;
   }
 
@@ -44,6 +63,16 @@
   @supports not (height: 100dvh) {
     body, #root {
       height: var(--app-height, 100vh);
+    }
+  }
+
+  /* ── Standalone PWA mode — apply safe-area padding to prevent notch/gesture bar overlap ── */
+  @media (display-mode: standalone) {
+    body {
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      padding-left: env(safe-area-inset-left, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
     }
   }
 }
@@ -70,25 +99,98 @@
   .star-field {
     background: radial-gradient(ellipse at center, #1a1a3e 0%, #0a0a1a 100%);
   }
+
+  .h-app {
+    height: var(--app-height, 100vh);
+    height: 100dvh;
+  }
+
+  /* ── Tap-compact: opt out of 44px minimum for elements that manage
+       their own tap areas (color swatches, tightly packed grids) ────────── */
+  .tap-compact {
+    min-height: unset;
+    min-width: unset;
+  }
+
+  /* ── Tap-target: force 44×44 via invisible padding when visual is smaller ─ */
+  .tap-target {
+    position: relative;
+  }
+  .tap-target::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 44px;
+    min-height: 44px;
+    width: 100%;
+    height: 100%;
+  }
 }
 
-/* ── Mobile optimizations ─────────────────────────────────────────────────── */
-@media (max-width: 768px) {
+/* ── Mobile typography & spacing scale ─────────────────────────────────────── */
+@media (max-width: 767px) {
   /* Prevent iOS zoom on input focus — keeps the 3D viewport stable */
   input, textarea, select {
     font-size: 16px !important;
   }
 
-  /* Touch targets need ≥ 44px (WCAG 2.5.5 Target Size) */
-  button, a, [role="button"] {
+  /* ── Typography scale ─────────────────────────────────────────────────── */
+  /* Body text: min 14px, line-height 1.5 */
+  p, .body-text {
+    font-size: max(14px, 0.875rem);
+    line-height: 1.5;
+  }
+
+  /* Headings: fluid scale that adapts to viewport width */
+  h1, h2, h3 {
+    font-size: clamp(1.25rem, 5vw, 2rem);
+  }
+
+  /* UI labels: min 10px, letter-spacing for readability at small sizes */
+  .ui-label, nav button, [data-ui-label] {
+    font-size: max(10px, 0.625rem);
+    letter-spacing: 0.03em;
+  }
+
+  /* ── Spacing scale ──────────────────────────────────────────────────────
+       4px  = micro gap (between tightly grouped elements)
+       8px  = small gap / gap-2 (within panels and cards)
+       12px = medium gap (comfortable spacing)
+       16px = large gap / gap-4 (between sections)
+       24px = section gap (between major layout areas)
+     ─────────────────────────────────────────────────────────────────────── */
+
+  /* ── Touch targets: 44×44px minimum tap area ────────────────────────────
+       Applied to primary interactive elements. Uses padding/pseudo-elements
+       to achieve touch size without inflating visual size.
+       NOTE: Excludes elements that manage their own touch targets like
+       color swatches, shape grids with tight spacing, and inline links.
+     ─────────────────────────────────────────────────────────────────────── */
+  button:not(.tap-compact):not(.swatch), 
+  a:not(.tap-compact):not(.inline-link), 
+  [role="button"]:not(.tap-compact) {
     min-height: 44px;
     min-width: 44px;
   }
 
-  /* Panels take full width on small screens */
+  /* ── Panels take full width on small screens ─────────────────────────── */
   .glass-dark {
     max-width: calc(100vw - 16px) !important;
   }
+
+  /* ── Contrast enforcement ───────────────────────────────────────────────
+       Meaningful text: 4.5:1 contrast (enforced via color choices)
+       Decorative/supplementary text (timestamps, hints): 3:1 minimum
+       Colors used:
+         - text-white (#ffffff) on #0a0a1a → 18.6:1 ✓
+         - text-slate-200 (#e2e8f0) on #0a0a1a → 14.4:1 ✓
+         - text-slate-300 (#cbd5e1) on #0a0a1a → 10.7:1 ✓
+         - text-slate-400 (#94a3b8) on #0a0a1a → 6.7:1 ✓
+         - text-slate-500 (#64748b) on #0a0a1a → 4.0:1 (decorative ✓, meets 3:1)
+         - text-slate-600 avoided for interactive text; reserved for aria-hidden decorations
+     ─────────────────────────────────────────────────────────────────────── */
 }
 
 /* Safe area insets for phones with notches / gesture bars */
@@ -126,6 +228,11 @@
 @keyframes pulse-glow {
   0%, 100% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.3); }
   50% { box-shadow: 0 0 40px rgba(139, 92, 246, 0.7); }
+}
+
+@keyframes planet-hint-pulse {
+  0%, 100% { opacity: 0.75; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
 }
 
 @keyframes fadeIn {

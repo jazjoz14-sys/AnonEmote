@@ -28,6 +28,16 @@ vi.mock('../store/useAppStore', () => ({
   ),
 }))
 
+// Mock device hooks (useIsSmallScreen uses window.matchMedia which jsdom lacks)
+vi.mock('../lib/device', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    useIsSmallScreen: () => false, // desktop viewport for preservation tests
+    useViewportSize: () => ({ width: 1024, height: 768 }),
+  }
+})
+
 // Mock React Three Fiber Canvas (the 3D background is not needed for section tests)
 vi.mock('@react-three/fiber', () => ({
   Canvas: ({ children }) => React.createElement('div', { 'data-testid': 'r3f-canvas' }, null),

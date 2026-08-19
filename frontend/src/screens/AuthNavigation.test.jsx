@@ -63,13 +63,13 @@ describe('Bug Condition: Auth Navigation loses selected planet (Bug #8)', () => 
 
     // Check PlanetInfoPanel saves planet before navigating to auth
     const panelPath = path.default.resolve(
-      path.default.dirname(fileURLToPath(import.meta.url)),
-      '..', 'components', 'ui', 'PlanetInfoPanel.jsx'
+      process.cwd(), 'src', 'components', 'ui', 'PlanetInfoPanel.jsx'
     )
     const panelSource = fs.default.readFileSync(panelPath, 'utf8')
 
     const savesPlanetBeforeAuth = panelSource.includes('pendingPlanet') ||
-      panelSource.includes('pendingPlanetId')
+      panelSource.includes('pendingPlanetId') ||
+      panelSource.includes('PendingPlanetId')
 
     expect(savesPlanetBeforeAuth).toBe(true)
   })

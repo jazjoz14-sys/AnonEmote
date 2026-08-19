@@ -1,10 +1,40 @@
 import { Router } from 'express'
 import rateLimit from 'express-rate-limit'
 import { getSupabase } from '../lib/supabase.js'
-import { login, logout, requireAdmin, activeSessionCount } from '../middleware/adminAuth.js'
+import { login, logout, requireAdmin, activeSessionCount, validateToken } from '../middleware/adminAuth.js'
 import { getLexicon, saveLexicon, appendAudit, readAudit, storageMode } from '../lib/storage.js'
+import { onAudit, offAudit } from '../lib/eventBus.js'
 
 export const adminRouter = Router()
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PRIVACY HELPERS
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Fields that must never appear in the SSE stream — preserves student anonymity. */
+const PRIVATE_FIELDS = ['content', 'session_id', 'ip', 'author_id']
+
+/**
+ * Strip privacy-sensitive fields from an audit entry before SSE broadcast.
+ * Removes fields at top level and from nested payload object.
+ * @param {object} entry - The raw audit entry
+ * @returns {object} Safe entry for client consumption
+ */
+export function stripPrivateFields(entry) {
+  const safe = { ...entry }
+  for (const field of PRIVATE_FIELDS) {
+    delete safe[field]
+  }
+  // Also strip from nested payload if present
+  if (safe.payload && typeof safe.payload === 'object') {
+    const safePayload = { ...safe.payload }
+    for (const field of PRIVATE_FIELDS) {
+      delete safePayload[field]
+    }
+    safe.payload = safePayload
+  }
+  return safe
+}
 
 // Brute-force protection on the login endpoint
 const loginLimiter = rateLimit({
@@ -46,6 +76,56 @@ adminRouter.post('/logout', requireAdmin, async (req, res) => {
   logout(req.adminToken)
   await appendAudit({ type: 'admin_logout' })
   res.json({ ok: true })
+})
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LIVE LOG STREAM (Server-Sent Events)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const MAX_SSE_CONNECTIONS = 5
+let activeConnections = 0
+
+/** GET /api/admin/stream?token=<session_token> — SSE audit stream */
+adminRouter.get('/stream', (req, res) => {
+  // Auth via query param (EventSource doesn't support headers)
+  const token = req.query.token
+  if (!validateToken(token)) {
+    return res.status(401).json({ error: 'Authentication required.' })
+  }
+
+  // Enforce connection cap
+  if (activeConnections >= MAX_SSE_CONNECTIONS) {
+    return res.status(503).json({ error: 'Maximum connections reached.' })
+  }
+
+  // Set SSE headers
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  })
+  res.flushHeaders()
+
+  activeConnections++
+
+  // Heartbeat every 30s to keep connection alive through proxies
+  const heartbeat = setInterval(() => res.write(':ping\n\n'), 30000)
+
+  // Listener for audit events
+  const listener = (entry) => {
+    const safe = stripPrivateFields(entry)
+    res.write(`data: ${JSON.stringify(safe)}\n\n`)
+  }
+
+  onAudit(listener)
+
+  // Cleanup on disconnect
+  req.on('close', () => {
+    offAudit(listener)
+    clearInterval(heartbeat)
+    activeConnections--
+  })
 })
 
 /* ══════════════════════════════════════════════════════════════════════════

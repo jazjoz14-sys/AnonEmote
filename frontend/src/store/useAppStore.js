@@ -202,9 +202,53 @@ const useAppStore = create((set, get) => ({
       return { privateNotes: next }
     }),
 
+  // ── Offline detection (set by SW message or navigator.onLine) ────────────
+  isOffline: false,
+  setIsOffline: (v) => set({ isOffline: v }),
+
+  // ── Bottom sheet tracking (for body scroll-lock management) ─────────────
+  // Array of string IDs representing currently open sheets,
+  // e.g. ['planetInfoPanel', 'postModal', 'doodleModal']
+  openSheets: [],
+  registerSheet: (id) =>
+    set((s) => ({
+      openSheets: s.openSheets.includes(id) ? s.openSheets : [...s.openSheets, id],
+    })),
+  unregisterSheet: (id) =>
+    set((s) => ({
+      openSheets: s.openSheets.filter((x) => x !== id),
+    })),
+
   // ── Modals ────────────────────────────────────────────────────────────────
   postModalOpen: false,
   setPostModalOpen: (v) => set({ postModalOpen: v }),
+
+  // ── Onboarding slice ──────────────────────────────────────────────────────
+  onboarding: {
+    active: false,       // overlay currently visible
+    step: 0,            // 0-indexed current step (0..5)
+    totalSteps: 6,
+  },
+  startOnboarding: () => set({ onboarding: { active: true, step: 0, totalSteps: 6 } }),
+  nextOnboardingStep: () => set((s) => ({
+    onboarding: { ...s.onboarding, step: Math.min(s.onboarding.step + 1, 5) }
+  })),
+  prevOnboardingStep: () => set((s) => ({
+    onboarding: { ...s.onboarding, step: Math.max(s.onboarding.step - 1, 0) }
+  })),
+  completeOnboarding: () => set({ onboarding: { active: false, step: 0, totalSteps: 6 } }),
+
+  // ── Toast slice ───────────────────────────────────────────────────────────
+  toasts: [], // [{ id, message, type, duration }]
+  showToast: ({ message, type = 'success', duration = 3000 }) =>
+    set((s) => ({
+      toasts: [...s.toasts, { id: crypto.randomUUID(), message, type, duration }]
+    })),
+  dismissToast: (id) =>
+    set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
+
+  // ── Pending metadata writes for retry ─────────────────────────────────────
+  pendingMetadataWrites: [],
 }))
 
 export default useAppStore

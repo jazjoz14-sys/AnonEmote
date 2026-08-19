@@ -51,16 +51,25 @@ async function getAuthToken() {
  * fetch wrapper that resolves the base URL, sends JSON, and attaches
  * the Supabase auth token if the user is logged in.
  * Returns the raw Response so callers can inspect status codes.
+ *
+ * If the caller already provides an Authorization header (e.g. the admin
+ * console with its own session token), that header is preserved — we don't
+ * overwrite it with the Supabase JWT.
  */
 export async function apiFetch(path, options = {}) {
-  const token = await getAuthToken()
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers,
   }
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
+
+  // Only attach Supabase auth if no Authorization was explicitly provided
+  if (!headers['Authorization'] && !headers['authorization']) {
+    const token = await getAuthToken()
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
   }
+
   return fetch(apiUrl(path), {
     ...options,
     headers,

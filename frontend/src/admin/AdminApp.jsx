@@ -5,12 +5,14 @@ import MonitorTab from './MonitorTab'
 import ReportsTab from './ReportsTab'
 import RulesTab from './RulesTab'
 import UsersTab from './UsersTab'
+import LiveLogsTab from './LiveLogsTab'
 
 const TABS = [
   { id: 'monitor', label: 'Monitor Activity', icon: '📊' },
   { id: 'reports', label: 'Reported Content', icon: '⚑' },
   { id: 'rules', label: 'Filtering Rules', icon: '🛠' },
   { id: 'users', label: 'User Management', icon: '👥' },
+  { id: 'live', label: 'Live Logs', icon: '📡' },
 ]
 
 /**
@@ -27,13 +29,32 @@ export default function AdminApp() {
 
   // The main app locks body scroll for the 3D canvas; the console needs it back.
   useEffect(() => {
+    const root = document.getElementById('root')
     const prevOverflow = document.body.style.overflow
     const prevHeight = document.body.style.height
+    const prevRootOverflow = root?.style.overflow
+    const prevRootPosition = root?.style.position
+    const prevRootHeight = root?.style.height
+    const prevRootInset = root?.style.inset
+
     document.body.style.overflow = 'auto'
     document.body.style.height = 'auto'
+    if (root) {
+      root.style.overflow = 'auto'
+      root.style.position = 'static'
+      root.style.height = 'auto'
+      root.style.inset = 'unset'
+    }
+
     return () => {
       document.body.style.overflow = prevOverflow
       document.body.style.height = prevHeight
+      if (root) {
+        root.style.overflow = prevRootOverflow
+        root.style.position = prevRootPosition
+        root.style.height = prevRootHeight
+        root.style.inset = prevRootInset
+      }
     }
   }, [])
 
@@ -110,6 +131,7 @@ export default function AdminApp() {
         {tab === 'reports' && <ReportsTab onAuthError={handleAuthError} />}
         {tab === 'rules' && <RulesTab onAuthError={handleAuthError} />}
         {tab === 'users' && <UsersTab onAuthError={handleAuthError} />}
+        {tab === 'live' && <LiveLogsTab onAuthError={handleAuthError} />}
       </main>
 
       <footer className="max-w-6xl mx-auto px-5 pb-8 pt-2">

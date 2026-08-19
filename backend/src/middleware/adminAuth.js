@@ -88,3 +88,17 @@ export function activeSessionCount() {
   prune()
   return sessions.size
 }
+
+/**
+ * Validate a session token without the full middleware pattern.
+ * Used by the SSE endpoint where auth comes from a query parameter
+ * (EventSource doesn't support custom headers).
+ * @param {string} token - The session token to validate
+ * @returns {boolean} true if valid and not expired
+ */
+export function validateToken(token) {
+  if (process.env.ADMIN_ENABLED !== 'true') return false
+  if (!token) return false
+  prune()
+  return sessions.has(token)
+}

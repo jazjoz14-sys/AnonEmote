@@ -9,18 +9,23 @@ import { apiFetch } from '../../lib/api'
  * One reaction per session per post. Tapping the same emoji removes it,
  * tapping a different one switches. Counts are shown to the reader but posts
  * are never sorted or ranked by them, so there is no leaderboard effect.
+ *
+ * Loading state: when a reaction is in-flight, the tapped emoji shows at
+ * opacity 0.4 and all reaction buttons on this post are disabled. On server
+ * confirmation the emoji returns to full opacity. On failure the optimistic
+ * update is rolled back and an auto-dismissing error toast is shown (2.5s).
  */
 export default function ReactionBar({ post, accentColor = '#8b5cf6' }) {
-  const { sessionId, reactions, applyReaction, setReportTarget, isAuthenticated } = useAppStore()
-  const [busy, setBusy] = useState(false)
-  const [failed, setFailed] = useState(false)
+  const { sessionId, reactions, applyReaction, setReportTarget, isAuthenticated, showToast } = useAppStore()
+  // Track which emoji is currently pending (in-flight) for this post
+  const [pendingEmoji, setPendingEmoji] = useState(null)
 
   const entry = reactions[post.id] || { counts: {}, mine: null }
+  const busy = pendingEmoji !== null
 
   const handleReact = async (emoji) => {
     if (busy || !sessionId || !isAuthenticated) return
-    setBusy(true)
-    setFailed(false)
+    setPendingEmoji(emoji)
 
     // Snapshot for rollback, then update optimistically so it feels instant
     const snapshot = {
@@ -57,21 +62,21 @@ export default function ReactionBar({ post, accentColor = '#8b5cf6' }) {
       useAppStore.setState((s) => ({
         reactions: { ...s.reactions, [post.id]: snapshot },
       }))
-      setFailed(true)
-      setTimeout(() => setFailed(false), 2500)
+      showToast({ message: 'Reaction not saved', type: 'error', duration: 2500 })
     } finally {
-      setBusy(false)
+      setPendingEmoji(null)
     }
   }
 
   return (
-    <div className="mt-2 flex flex-col gap-1">
+    <div data-onboarding="reactions" className="mt-2 flex flex-col gap-1">
       <div className="flex items-center justify-between gap-2">
         {/* Emoji reactions */}
         <div className="flex items-center gap-1 flex-wrap">
           {REACTIONS.map(({ emoji, label }) => {
             const count = entry.counts[emoji] || 0
             const isMine = entry.mine === emoji
+            const isPending = pendingEmoji === emoji
 
             return (
               <button
@@ -82,9 +87,13 @@ export default function ReactionBar({ post, accentColor = '#8b5cf6' }) {
                 aria-label={`${label}${count > 0 ? ` — ${count}` : ''}`}
                 aria-pressed={isMine}
                 className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs
-                            transition-all duration-150 disabled:opacity-40
+                            transition-all duration-150
+                            ${busy ? 'pointer-events-none' : ''}
                             ${isMine ? 'bg-white/15 ring-1' : 'hover:bg-white/10'}`}
-                style={isMine ? { '--tw-ring-color': accentColor } : undefined}
+                style={{
+                  opacity: isPending ? 0.4 : 1,
+                  ...(isMine ? { '--tw-ring-color': accentColor } : {}),
+                }}
               >
                 <span className="text-sm leading-none">{emoji}</span>
                 {count > 0 && (
@@ -107,12 +116,6 @@ export default function ReactionBar({ post, accentColor = '#8b5cf6' }) {
           ⚑
         </button>
       </div>
-
-      {failed && (
-        <p className="text-[10px] text-orange-400/90" role="status">
-          Couldn't save that reaction. Try again.
-        </p>
-      )}
     </div>
   )
 }

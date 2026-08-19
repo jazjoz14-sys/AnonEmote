@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import useAppStore from '../store/useAppStore'
 import { CLAY, makeClayBlob } from '../components/3d/clay'
 import { PLANETS } from '../data/planets'
+import { useIsSmallScreen } from '../lib/device'
 
 /**
  * LandingScreen — OkayDev-inspired atmospheric landing.
@@ -245,6 +246,81 @@ function BackgroundPlanets() {
   )
 }
 
+/* ── CSS-based background for mobile (replaces WebGL Canvas) ───────────────── */
+function MobileBackground() {
+  return (
+    <div className="fixed inset-0 pointer-events-none z-[1]" aria-hidden="true">
+      <div className="absolute top-1/4 -left-20 w-64 h-64 rounded-full bg-violet-600/10 blur-3xl" />
+      <div className="absolute top-2/3 right-0 w-48 h-48 rounded-full bg-blue-500/[0.08] blur-3xl" />
+      <div className="absolute bottom-1/4 left-1/3 w-40 h-40 rounded-full bg-amber-500/[0.06] blur-3xl" />
+      <div className="absolute top-1/2 right-1/4 w-32 h-32 rounded-full bg-emerald-500/[0.05] blur-3xl" />
+    </div>
+  )
+}
+
+/* ── Mobile planet card — vertically stacked ───────────────────────────────── */
+function MobilePlanetCard({ planet }) {
+  const details = PLANET_DETAILS[planet.id]
+  return (
+    <div
+      className="w-full rounded-lg border border-white/[0.08] p-4 flex flex-col gap-3"
+      style={{ background: 'rgba(255,255,255,0.02)' }}
+    >
+      {/* Icon + name row */}
+      <div className="flex items-center gap-3">
+        <img
+          src={PLANET_ICONS[planet.id]}
+          alt={planet.label}
+          className="w-10 h-10 object-contain"
+          draggable={false}
+        />
+        <h3 className="text-white text-lg font-bold tracking-tight">{planet.label}</h3>
+      </div>
+      {/* Description */}
+      <p className="text-slate-300 text-sm leading-relaxed">
+        {planet.description}
+      </p>
+      {/* Traits */}
+      {details && (
+        <div className="flex flex-wrap gap-2">
+          {details.traits.map((t) => (
+            <span
+              key={t}
+              className="text-[11px] tracking-[0.12em] uppercase px-3 py-1
+                         border border-white/[0.1] text-slate-300 rounded-sm"
+            >
+              {t}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── Mobile vertical planet list ───────────────────────────────────────────── */
+function MobilePlanetList() {
+  return (
+    <section className="relative z-10 px-4 py-12">
+      {/* Header */}
+      <div className="mb-6">
+        <p className="text-[11px] tracking-[0.35em] uppercase text-slate-500 mb-2">
+          Seven Planets
+        </p>
+        <h2 className="text-xl font-bold text-white tracking-tight">
+          One for every feeling.
+        </h2>
+      </div>
+      {/* Vertical card stack: full width minus 32px padding (16px on each side from px-4) */}
+      <div className="flex flex-col gap-4">
+        {PLANETS.map((planet) => (
+          <MobilePlanetCard key={planet.id} planet={planet} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
 /* ── Horizontal scroll driven by vertical scroll (scroll-jacking) ──────────── */
 function PlanetCarousel() {
   const trackRef = useRef(null)
@@ -373,25 +449,42 @@ function PlanetSlide({ planet }) {
 /* ── Main ──────────────────────────────────────────────────────────────────── */
 export default function LandingScreen() {
   const setPhase = useAppStore((s) => s.setPhase)
+  const isSmallScreen = useIsSmallScreen()
 
   return (
-    <div className="w-full h-full overflow-y-auto scroll-smooth" style={{ background: '#050510' }}>
+    <div
+      className="w-full h-full overflow-y-auto scroll-smooth"
+      style={{
+        background: '#050510',
+        // Prevent pull-to-refresh / rubber-band on mobile scroll container
+        overscrollBehaviorY: isSmallScreen ? 'none' : undefined,
+      }}
+    >
       <Particles />
-      <BackgroundPlanets />
+      {isSmallScreen ? <MobileBackground /> : <BackgroundPlanets />}
 
       {/* ═══════ HERO ═══════ */}
-      <section className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 py-20">
+      <section
+        className={`relative z-10 flex flex-col items-center justify-center px-6
+                    ${isSmallScreen ? 'min-h-[100dvh] py-12' : 'min-h-screen py-20'}`}
+      >
         {/* Eyebrow */}
         <p className="text-[11px] tracking-[0.35em] uppercase text-slate-500 mb-6">
           A safe space for anonymous expression
         </p>
 
-        {/* Massive headline — OkayDev style */}
+        {/* Massive headline — responsive font sizing */}
         <h1 className="text-center leading-[0.9] tracking-tight">
-          <span className="block text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-bold text-white">
+          <span
+            className="block font-bold text-white md:text-8xl lg:text-9xl"
+            style={{ fontSize: isSmallScreen ? 'clamp(2.5rem, 10vw, 4rem)' : undefined }}
+          >
             Speak
           </span>
-          <span className="block text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-bold text-white">
+          <span
+            className="block font-bold text-white md:text-8xl lg:text-9xl"
+            style={{ fontSize: isSmallScreen ? 'clamp(2.5rem, 10vw, 4rem)' : undefined }}
+          >
             With<img
               src="/icons/logo.png"
               alt="o"
@@ -400,7 +493,10 @@ export default function LandingScreen() {
               draggable={false}
             />ut
           </span>
-          <span className="block text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-bold text-violet-400">
+          <span
+            className="block font-bold text-violet-400 md:text-8xl lg:text-9xl"
+            style={{ fontSize: isSmallScreen ? 'clamp(2.5rem, 10vw, 4rem)' : undefined }}
+          >
             Fear
           </span>
         </h1>
@@ -411,28 +507,35 @@ export default function LandingScreen() {
           Just a 3D emotional space moderated by AI for your safety.
         </p>
 
-        {/* CTA — outline button like OkayDev */}
+        {/* CTA — outline button, min 48px height and 200px width on mobile */}
         <button
           onClick={() => setPhase('auth')}
           className="mt-10 px-8 py-3.5 text-xs tracking-[0.2em] uppercase font-medium
                      text-white border border-white/30 rounded-sm
                      hover:bg-white hover:text-[#050510]
                      active:scale-[0.97] transition-all duration-300"
+          style={{
+            minHeight: isSmallScreen ? '48px' : undefined,
+            minWidth: isSmallScreen ? '200px' : undefined,
+          }}
         >
           Enter Space
         </button>
 
-        {/* Scroll line */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
-          <div className="w-px h-10 bg-gradient-to-b from-transparent to-white/20" />
-        </div>
+        {/* Scroll line — only show on desktop */}
+        {!isSmallScreen && (
+          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
+            <div className="w-px h-10 bg-gradient-to-b from-transparent to-white/20" />
+          </div>
+        )}
       </section>
 
       {/* ═══════ PLANET SHOWCASE ═══════ */}
-      <PlanetCarousel />
+      {isSmallScreen ? <MobilePlanetList /> : <PlanetCarousel />}
 
       {/* ═══════ STATEMENT ═══════ */}
-      <section className="relative z-10 px-6 py-24 md:py-36 border-t border-white/[0.04]">
+      <section className={`relative z-10 px-6 border-t border-white/[0.04]
+                           ${isSmallScreen ? 'py-12' : 'py-24 md:py-36'}`}>
         <div className="max-w-3xl mx-auto text-center">
           <p className="text-[11px] tracking-[0.35em] uppercase text-slate-500 mb-6">
             Zero Knowledge Architecture
@@ -448,12 +551,14 @@ export default function LandingScreen() {
       </section>
 
       {/* ═══════ FINAL CTA ═══════ */}
-      <section className="relative z-10 px-6 py-28 md:py-40 border-t border-white/[0.04]">
+      <section className={`relative z-10 px-6 border-t border-white/[0.04]
+                           ${isSmallScreen ? 'py-12' : 'py-28 md:py-40'}`}>
         <div className="max-w-2xl mx-auto text-center">
           <p className="text-[11px] tracking-[0.35em] uppercase text-slate-500 mb-6">
             Imposters welcome here
           </p>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white tracking-tight leading-[0.95]">
+          <h2 className={`font-bold text-white tracking-tight leading-[0.95]
+                          ${isSmallScreen ? 'text-2xl' : 'text-3xl sm:text-4xl md:text-5xl'}`}>
             Ready to speak<br />without fear?
           </h2>
           <button
@@ -462,6 +567,10 @@ export default function LandingScreen() {
                        text-white border border-white/30 rounded-sm
                        hover:bg-white hover:text-[#050510]
                        active:scale-[0.97] transition-all duration-300"
+            style={{
+              minHeight: isSmallScreen ? '48px' : undefined,
+              minWidth: isSmallScreen ? '200px' : undefined,
+            }}
           >
             Join Free Today
           </button>
@@ -474,11 +583,11 @@ export default function LandingScreen() {
                         justify-between gap-4">
           <div className="flex items-center gap-3">
             <img src="/icons/logo.png" alt="" className="w-6 h-6 opacity-60" draggable={false} />
-            <span className="text-[10px] tracking-[0.2em] uppercase text-slate-600">
+            <span className="text-[10px] tracking-[0.2em] uppercase text-slate-600 ui-label">
               AnonEmote © 2026
             </span>
           </div>
-          <div className="flex items-center gap-6 text-[10px] tracking-[0.15em] uppercase text-slate-600">
+          <div className="flex items-center gap-6 text-[10px] tracking-[0.15em] uppercase text-slate-600 ui-label">
             <span>In crisis? Call <strong className="text-slate-400">1553</strong></span>
           </div>
         </div>

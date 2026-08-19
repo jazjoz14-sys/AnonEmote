@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import useAppStore from '../store/useAppStore'
 import { supabase } from '../lib/supabase'
+import TermsModal from '../components/modals/TermsModal'
 
 /**
  * AuthScreen — login/register gate with password reset.
@@ -18,6 +19,9 @@ export default function AuthScreen() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState('')
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [termsModalType, setTermsModalType] = useState(null) // null | 'terms' | 'privacy'
+  const [termsError, setTermsError] = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -44,6 +48,11 @@ export default function AuthScreen() {
       return
     }
 
+    if (mode === 'register' && !termsAccepted) {
+      setTermsError('You must agree to the Terms & Conditions and Privacy Policy to create an account.')
+      return
+    }
+
     setLoading(true)
     try {
       if (mode === 'reset') {
@@ -52,8 +61,18 @@ export default function AuthScreen() {
         setSuccess('Password reset link sent! Check your email.')
         setMode('login')
       } else if (mode === 'register') {
-        const { error } = await supabase.auth.signUp({ email, password })
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: window.location.origin,
+          },
+        })
         if (error) throw error
+        // Store terms acceptance timestamp in user metadata
+        await supabase.auth.updateUser({
+          data: { terms_accepted_at: new Date().toISOString() }
+        })
         setSuccess('Account created! Check your email to confirm, then sign in.')
         setMode('login')
       } else {
@@ -106,9 +125,11 @@ export default function AuthScreen() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email"
+            disabled={loading}
             className="w-full px-4 py-3 rounded-sm text-sm text-white
                        bg-white/[0.03] border border-white/[0.1]
                        placeholder-slate-600 focus:outline-none focus:border-white/25
+                       disabled:opacity-40 disabled:cursor-not-allowed
                        transition-colors"
             autoComplete="email"
           />
@@ -118,9 +139,11 @@ export default function AuthScreen() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
+              disabled={loading}
               className="w-full px-4 py-3 rounded-sm text-sm text-white
                          bg-white/[0.03] border border-white/[0.1]
                          placeholder-slate-600 focus:outline-none focus:border-white/25
+                         disabled:opacity-40 disabled:cursor-not-allowed
                          transition-colors"
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
             />
@@ -131,12 +154,52 @@ export default function AuthScreen() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Confirm password"
+              disabled={loading}
               className="w-full px-4 py-3 rounded-sm text-sm text-white
                          bg-white/[0.03] border border-white/[0.1]
                          placeholder-slate-600 focus:outline-none focus:border-white/25
+                         disabled:opacity-40 disabled:cursor-not-allowed
                          transition-colors"
               autoComplete="new-password"
             />
+          )}
+
+          {/* Terms & Conditions checkbox — register mode only */}
+          {mode === 'register' && (
+            <label className="flex items-start gap-3 py-1 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={(e) => {
+                  setTermsAccepted(e.target.checked)
+                  if (e.target.checked) setTermsError('')
+                }}
+                className="mt-0.5 w-4 h-4 shrink-0 accent-violet-500 rounded
+                           bg-white/[0.03] border border-white/[0.2]"
+              />
+              <span className="text-xs text-slate-400 leading-relaxed">
+                I agree to the{' '}
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); setTermsModalType('terms') }}
+                  className="text-violet-400 hover:text-violet-300 underline transition-colors"
+                >
+                  Terms &amp; Conditions
+                </button>
+                {' '}and{' '}
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); setTermsModalType('privacy') }}
+                  className="text-violet-400 hover:text-violet-300 underline transition-colors"
+                >
+                  Privacy Policy
+                </button>
+              </span>
+            </label>
+          )}
+
+          {termsError && (
+            <p className="text-xs text-red-400 leading-relaxed">{termsError}</p>
           )}
 
           {error && (
@@ -148,7 +211,7 @@ export default function AuthScreen() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (mode === 'register' && !termsAccepted)}
             className="w-full py-3 rounded-sm text-xs tracking-[0.15em] uppercase font-medium
                        text-white border border-white/30
                        hover:bg-white hover:text-[#050510]
@@ -162,7 +225,7 @@ export default function AuthScreen() {
         {/* Toggle mode */}
         <div className="flex flex-col items-center gap-3">
           <button
-            onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); setSuccess('') }}
+            onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); setSuccess(''); setTermsAccepted(false); setTermsError('') }}
             className="text-xs text-slate-400 hover:text-white transition-colors"
           >
             {mode === 'login' ? "Don't have an account? Register" : mode === 'register' ? 'Already have an account? Sign in' : 'Back to sign in'}
@@ -170,7 +233,7 @@ export default function AuthScreen() {
 
           {mode === 'login' && (
             <button
-              onClick={() => { setMode('reset'); setError(''); setSuccess('') }}
+              onClick={() => { setMode('reset'); setError(''); setSuccess(''); setTermsAccepted(false); setTermsError('') }}
               className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
             >
               Forgot password?
@@ -194,6 +257,11 @@ export default function AuthScreen() {
           Guests can explore the 3D star system and read posts but cannot broadcast, react, or reply.
         </p>
       </div>
+
+      {/* Terms & Conditions / Privacy Policy modal */}
+      {termsModalType && (
+        <TermsModal type={termsModalType} onClose={() => setTermsModalType(null)} />
+      )}
     </div>
   )
 }

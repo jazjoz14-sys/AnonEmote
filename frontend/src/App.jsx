@@ -10,6 +10,8 @@ import PostModal from './components/modals/PostModal'
 import DoodleModal from './components/modals/DoodleModal'
 import ReportModal from './components/modals/ReportModal'
 import AdminApp from './admin/AdminApp'
+import OfflineIndicator from './components/ui/OfflineIndicator'
+import Toast from './components/ui/Toast'
 
 /** Minimal hash router — '#admin' opens the administration console. */
 function useIsAdminRoute() {
@@ -57,9 +59,9 @@ export default function App() {
   if (isAdmin) return <AdminApp />
 
   return (
-    <div className={`relative w-full h-full bg-space-900
+    <div className={`relative w-full bg-space-900
                      ${phase === 'space' ? 'overflow-hidden' : 'overflow-y-auto overflow-x-hidden'}`}
-         style={{ height: '100%' }}>
+         style={{ height: 'var(--app-height, 100dvh)' }}>
       {/* Phase-based screen rendering */}
       {phase === 'landing' && <LandingScreen />}
       {phase === 'auth' && <AuthScreen />}
@@ -67,11 +69,23 @@ export default function App() {
       {phase === 'checkin' && <CheckInScreen />}
       {phase === 'space' && <SpaceScreen />}
 
+      {/* Offline banner — renders below HUD on all screens */}
+      <OfflineIndicator />
+
       {/* Global overlays — only show post/doodle modals if authenticated */}
+      {(() => {
+        if (postModalOpen && isAuthenticated) {
+          console.log('[App] Modal should render. selectedPlanet?.id:', selectedPlanet?.id)
+        }
+        return null
+      })()}
       {postModalOpen && isAuthenticated && selectedPlanet?.id === 'doodle' && <DoodleModal />}
       {postModalOpen && isAuthenticated && selectedPlanet?.id !== 'doodle' && <PostModal />}
       {reportTarget && <ReportModal />}
       {crisis.open && <CrisisModal />}
+
+      {/* Global toast notifications — z-[200] renders above all other content */}
+      <Toast />
     </div>
   )
 }

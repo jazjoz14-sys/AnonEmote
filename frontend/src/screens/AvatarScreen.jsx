@@ -2,17 +2,115 @@ import React, { Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
-import * as THREE from 'three'
 import UserAvatar from '../components/3d/UserAvatar'
 import AvatarCustomizer from '../components/ui/AvatarCustomizer'
+import { useIsSmallScreen } from '../lib/device'
+import { useOrientation } from '../lib/viewport'
 
 /**
  * AvatarScreen — full-screen WebGL stage with the customizer overlaid.
  *
  * The avatar renders live behind the glass panel, so every option change is
  * immediately visible rather than being previewed in a small box.
+ *
+ * Mobile (< 768px):
+ *   - Portrait: 3D canvas occupies the top portion (min 35% vh), customizer
+ *     panel anchored at bottom (max 55dvh). Panel scrolls independently.
+ *   - Landscape: Side panel layout — canvas fills left, panel on right (max 320px).
+ *
+ * Desktop (≥ 768px): Unchanged — full-screen canvas with overlaid panel.
  */
 export default function AvatarScreen() {
+  const isMobile = useIsSmallScreen()
+  const { isLandscape } = useOrientation()
+
+  // On mobile landscape: side-by-side layout (canvas left, panel right)
+  if (isMobile && isLandscape) {
+    return (
+      <div className="relative w-full h-full overflow-hidden flex flex-row">
+        {/* 3D Canvas — fills remaining left space */}
+        <div className="flex-1 relative" style={{ minHeight: '100%' }}>
+          <Canvas
+            camera={{ position: [0, 0, 5], fov: 50 }}
+            dpr={[1, 1.5]}
+            gl={{ antialias: true, powerPreference: 'high-performance' }}
+            className="w-full h-full"
+            style={{ background: '#050510' }}
+          >
+            <Suspense fallback={null}>
+              <ambientLight intensity={0.45} />
+              <pointLight position={[4, 4, 4]} intensity={1.2} />
+              <pointLight position={[-4, -2, -3]} intensity={0.5} color="#a78bfa" />
+              <UserAvatar preview />
+              <OrbitControls
+                enablePan={false}
+                enableZoom={false}
+                autoRotate
+                autoRotateSpeed={1.2}
+              />
+              <EffectComposer disableNormalPass multisampling={0}>
+                <Bloom
+                  intensity={1.4}
+                  luminanceThreshold={0.35}
+                  luminanceSmoothing={0.4}
+                  mipmapBlur
+                  radius={0.8}
+                />
+              </EffectComposer>
+            </Suspense>
+          </Canvas>
+        </div>
+
+        {/* Side panel — right-aligned, max 320px */}
+        <AvatarCustomizer landscape />
+      </div>
+    )
+  }
+
+  // Mobile portrait: stacked layout (canvas top, panel bottom)
+  if (isMobile) {
+    return (
+      <div className="relative w-full h-full overflow-hidden flex flex-col">
+        {/* 3D Canvas — min 35% viewport height, touch orbit stays interactive */}
+        <div className="relative flex-shrink-0" style={{ minHeight: '35dvh', height: '45dvh' }}>
+          <Canvas
+            camera={{ position: [0, 0, 5], fov: 50 }}
+            dpr={[1, 1.5]}
+            gl={{ antialias: true, powerPreference: 'high-performance' }}
+            className="w-full h-full"
+            style={{ background: '#050510' }}
+          >
+            <Suspense fallback={null}>
+              <ambientLight intensity={0.45} />
+              <pointLight position={[4, 4, 4]} intensity={1.2} />
+              <pointLight position={[-4, -2, -3]} intensity={0.5} color="#a78bfa" />
+              <UserAvatar preview />
+              <OrbitControls
+                enablePan={false}
+                enableZoom={false}
+                autoRotate
+                autoRotateSpeed={1.2}
+              />
+              <EffectComposer disableNormalPass multisampling={0}>
+                <Bloom
+                  intensity={1.4}
+                  luminanceThreshold={0.35}
+                  luminanceSmoothing={0.4}
+                  mipmapBlur
+                  radius={0.8}
+                />
+              </EffectComposer>
+            </Suspense>
+          </Canvas>
+        </div>
+
+        {/* Bottom-anchored customizer panel */}
+        <AvatarCustomizer />
+      </div>
+    )
+  }
+
+  // Desktop: original layout (full-screen canvas with overlaid panel)
   return (
     <div className="relative w-full h-full overflow-hidden">
       <Canvas
@@ -23,15 +121,12 @@ export default function AvatarScreen() {
         style={{ background: '#050510' }}
       >
         <Suspense fallback={null}>
-          {/* Soft studio lighting — the avatar is emissive, so this is mostly
-              to give the form some shading rather than to light it */}
           <ambientLight intensity={0.45} />
           <pointLight position={[4, 4, 4]} intensity={1.2} />
           <pointLight position={[-4, -2, -3]} intensity={0.5} color="#a78bfa" />
 
           <UserAvatar preview />
 
-          {/* Let the user turn their form to look at it */}
           <OrbitControls
             enablePan={false}
             enableZoom={false}
@@ -39,7 +134,6 @@ export default function AvatarScreen() {
             autoRotateSpeed={1.2}
           />
 
-          {/* Bloom gives the aura its glow */}
           <EffectComposer disableNormalPass multisampling={0}>
             <Bloom
               intensity={1.4}
