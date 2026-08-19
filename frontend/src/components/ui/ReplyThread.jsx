@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import useAppStore from '../../store/useAppStore'
 import { apiFetch } from '../../lib/api'
+import AuthPromptModal from '../modals/AuthPromptModal'
 
 /**
  * ReplyThread — expandable replies section for a post on the Advice planet.
@@ -10,7 +11,7 @@ import { apiFetch } from '../../lib/api'
  * are caught identically to top-level posts.
  */
 export default function ReplyThread({ post, accentColor }) {
-  const { sessionId, isAuthenticated } = useAppStore()
+  const { sessionId, isAuthenticated, selectedPlanet } = useAppStore()
 
   const [expanded, setExpanded] = useState(false)
   const [replies, setReplies] = useState([])
@@ -20,6 +21,8 @@ export default function ReplyThread({ post, accentColor }) {
   const [text, setText] = useState('')
   const [status, setStatus] = useState('idle') // idle | sending | blocked | error
   const [errorMsg, setErrorMsg] = useState('')
+  // Auth prompt state for guest write-gating
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false)
 
   const loadReplies = useCallback(async () => {
     setLoading(true)
@@ -126,7 +129,20 @@ export default function ReplyThread({ post, accentColor }) {
 
           {/* Compose — only for authenticated users */}
           {!isAuthenticated ? (
-            <p className="text-[10px] text-slate-600">Sign in to reply</p>
+            <>
+              <button
+                onClick={() => setShowAuthPrompt(true)}
+                className="text-xs text-violet-400 hover:text-violet-300 transition-colors
+                           self-start px-1 py-0.5"
+              >
+                + Sign in to offer advice
+              </button>
+              <AuthPromptModal
+                open={showAuthPrompt}
+                onClose={() => setShowAuthPrompt(false)}
+                planetContext={selectedPlanet?.label || post.planet_id}
+              />
+            </>
           ) : !composing ? (
             <button
               onClick={() => setComposing(true)}

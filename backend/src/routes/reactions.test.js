@@ -56,9 +56,10 @@ describe('Reactions Route Validation', () => {
         method: 'POST',
         body: {
           post_id: '123e4567-e89b-12d3-a456-426614174000',
-          session_id: '123e4567-e89b-12d3-a456-426614174001',
           emoji: '👎', // Not in the allowed set
         },
+        userId: 'auth-user-id',
+        isAuthenticated: true,
       })
       const res = createMockRes()
 
@@ -83,9 +84,10 @@ describe('Reactions Route Validation', () => {
         method: 'POST',
         body: {
           post_id: '123e4567-e89b-12d3-a456-426614174000',
-          session_id: '123e4567-e89b-12d3-a456-426614174001',
           emoji: 'not-an-emoji',
         },
+        userId: 'auth-user-id',
+        isAuthenticated: true,
       })
       const res = createMockRes()
 
@@ -110,34 +112,10 @@ describe('Reactions Route Validation', () => {
       const req = createMockReq({
         method: 'POST',
         body: {
-          session_id: '123e4567-e89b-12d3-a456-426614174001',
           emoji: '🫂',
         },
-      })
-      const res = createMockRes()
-
-      const postHandler = findRouteHandler(reactionsRouter, 'post', '/')
-      await postHandler(req, res)
-
-      expect(res.statusCode).toBe(400)
-      expect(res._json.error).toContain('required')
-    })
-
-    it('should return 400 when session_id is missing', async () => {
-      /**
-       * **Validates: Requirements 3.3**
-       */
-      const mockSupabase = createMockSupabase()
-      getSupabase.mockReturnValue(mockSupabase)
-
-      const { reactionsRouter } = await import('./reactions.js')
-
-      const req = createMockReq({
-        method: 'POST',
-        body: {
-          post_id: '123e4567-e89b-12d3-a456-426614174000',
-          emoji: '🫂',
-        },
+        userId: 'auth-user-id',
+        isAuthenticated: true,
       })
       const res = createMockRes()
 
@@ -161,8 +139,9 @@ describe('Reactions Route Validation', () => {
         method: 'POST',
         body: {
           post_id: '123e4567-e89b-12d3-a456-426614174000',
-          session_id: '123e4567-e89b-12d3-a456-426614174001',
         },
+        userId: 'auth-user-id',
+        isAuthenticated: true,
       })
       const res = createMockRes()
 
@@ -187,9 +166,10 @@ describe('Reactions Route Validation', () => {
         method: 'POST',
         body: {
           post_id: '123e4567-e89b-12d3-a456-426614174000',
-          session_id: '123e4567-e89b-12d3-a456-426614174001',
           emoji: '🫂',
         },
+        userId: 'auth-user-id',
+        isAuthenticated: true,
       })
       const res = createMockRes()
 

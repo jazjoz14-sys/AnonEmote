@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import useAppStore from '../../store/useAppStore'
 import { REACTIONS } from '../../data/reactions'
 import { apiFetch } from '../../lib/api'
+import AuthPromptModal from '../modals/AuthPromptModal'
 
 /**
  * ReactionBar — emoji-only reactions plus a report action for a single post.
@@ -16,15 +17,24 @@ import { apiFetch } from '../../lib/api'
  * update is rolled back and an auto-dismissing error toast is shown (2.5s).
  */
 export default function ReactionBar({ post, accentColor = '#8b5cf6' }) {
-  const { sessionId, reactions, applyReaction, setReportTarget, isAuthenticated, showToast } = useAppStore()
+  const { sessionId, reactions, applyReaction, setReportTarget, isAuthenticated, showToast, selectedPlanet } = useAppStore()
   // Track which emoji is currently pending (in-flight) for this post
   const [pendingEmoji, setPendingEmoji] = useState(null)
+  // Auth prompt state for guest write-gating
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false)
 
   const entry = reactions[post.id] || { counts: {}, mine: null }
   const busy = pendingEmoji !== null
 
   const handleReact = async (emoji) => {
-    if (busy || !sessionId || !isAuthenticated) return
+    if (busy || !sessionId) return
+
+    // Guest write-gating: show auth prompt instead of submitting
+    if (!isAuthenticated) {
+      setShowAuthPrompt(true)
+      return
+    }
+
     setPendingEmoji(emoji)
 
     // Snapshot for rollback, then update optimistically so it feels instant
@@ -116,6 +126,13 @@ export default function ReactionBar({ post, accentColor = '#8b5cf6' }) {
           ⚑
         </button>
       </div>
+
+      {/* Auth prompt modal for guest write-gating on reactions */}
+      <AuthPromptModal
+        open={showAuthPrompt}
+        onClose={() => setShowAuthPrompt(false)}
+        planetContext={selectedPlanet?.label || post.planet_id}
+      />
     </div>
   )
 }

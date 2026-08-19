@@ -223,6 +223,22 @@ export default function ReportsTab({ onAuthError }) {
                   </p>
                 )}
 
+                {/* Author accountability info (admin-only, never shown in social layer) */}
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-slate-500 uppercase tracking-wide">Author:</span>
+                  {g.post.author_id ? (
+                    <code className="px-2 py-0.5 rounded bg-white/5 border border-white/10
+                                     text-slate-300 font-mono text-[11px] select-all">
+                      {g.post.author_id}
+                    </code>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/50
+                                     text-slate-500 italic">
+                      Pre-linking era post
+                    </span>
+                  )}
+                </div>
+
                 {/* Reported content */}
                 <p className="text-sm text-slate-200 bg-black/30 rounded-xl px-3 py-2.5
                               break-words leading-relaxed">

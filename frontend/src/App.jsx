@@ -9,6 +9,7 @@ import CrisisModal from './components/modals/CrisisModal'
 import PostModal from './components/modals/PostModal'
 import DoodleModal from './components/modals/DoodleModal'
 import ReportModal from './components/modals/ReportModal'
+import AuthPromptModal from './components/modals/AuthPromptModal'
 import AdminApp from './admin/AdminApp'
 import OfflineIndicator from './components/ui/OfflineIndicator'
 import Toast from './components/ui/Toast'
@@ -35,8 +36,12 @@ export default function App() {
   const {
     phase, initSession, initAuth, loadPrivateNotes,
     crisis, postModalOpen, reportTarget, selectedPlanet,
-    setPostModalOpen, isAuthenticated,
+    setPostModalOpen, setSelectedPlanet, isAuthenticated,
   } = useAppStore()
+
+  // Auth prompt state for guest write-gating
+  const [authPromptOpen, setAuthPromptOpen] = useState(false)
+  const [authPlanetContext, setAuthPlanetContext] = useState(null)
 
   // Initialize auth listener + anonymous session on mount
   useEffect(() => {
@@ -46,11 +51,17 @@ export default function App() {
   }, [initAuth, initSession, loadPrivateNotes])
 
   // Auto-open post modal when a planet is selected (only for authenticated users)
+  // For guests, show the AuthPromptModal instead
   useEffect(() => {
     if (selectedPlanet && isAuthenticated) {
       setPostModalOpen(true)
+      setAuthPromptOpen(false)
+    } else if (selectedPlanet && !isAuthenticated) {
+      setAuthPromptOpen(true)
+      setAuthPlanetContext(selectedPlanet?.label || selectedPlanet?.id)
     } else if (!selectedPlanet) {
       setPostModalOpen(false)
+      setAuthPromptOpen(false)
     }
   }, [selectedPlanet, isAuthenticated, setPostModalOpen])
 
@@ -86,6 +97,13 @@ export default function App() {
 
       {/* Global toast notifications — z-[200] renders above all other content */}
       <Toast />
+
+      {/* Auth prompt for guest write-gating — shown when guest selects a planet */}
+      <AuthPromptModal
+        open={authPromptOpen}
+        onClose={() => { setAuthPromptOpen(false); setSelectedPlanet(null) }}
+        planetContext={authPlanetContext}
+      />
     </div>
   )
 }

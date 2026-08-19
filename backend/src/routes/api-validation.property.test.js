@@ -142,9 +142,10 @@ describe('Feature: qa-testing-error-handling, Property 15: Invalid input rejecti
               method: 'POST',
               body: {
                 post_id: '123e4567-e89b-12d3-a456-426614174000',
-                session_id: '123e4567-e89b-12d3-a456-426614174001',
                 emoji: invalidEmoji,
               },
+              userId: 'auth-user-id',
+              isAuthenticated: true,
             })
             const res = createMockRes()
 
@@ -185,9 +186,10 @@ describe('Feature: qa-testing-error-handling, Property 15: Invalid input rejecti
               method: 'POST',
               body: {
                 post_id: '123e4567-e89b-12d3-a456-426614174000',
-                session_id: '123e4567-e89b-12d3-a456-426614174001',
                 reason: invalidReason,
               },
+              userId: 'auth-user-id',
+              isAuthenticated: true,
             })
             const res = createMockRes()
 

@@ -62,9 +62,10 @@ describe('POST /api/reports — Validation', () => {
     const req = createMockReq({
       body: {
         post_id: 'post-123',
-        session_id: 'session-abc',
         reason: 'trolling', // not in valid set
       },
+      userId: 'auth-user-id',
+      isAuthenticated: true,
     })
     const res = createMockRes()
 
@@ -81,8 +82,10 @@ describe('POST /api/reports — Validation', () => {
     const req = createMockReq({
       body: {
         post_id: 'post-123',
-        // missing session_id and reason
+        // missing reason
       },
+      userId: 'auth-user-id',
+      isAuthenticated: true,
     })
     const res = createMockRes()
 
@@ -101,9 +104,10 @@ describe('POST /api/reports — Validation', () => {
     const req = createMockReq({
       body: {
         post_id: 'post-123',
-        session_id: 'session-abc',
         reason: 'spam',
       },
+      userId: 'auth-user-id',
+      isAuthenticated: true,
     })
     const res = createMockRes()
 
@@ -123,9 +127,10 @@ describe('POST /api/reports — Validation', () => {
     const req = createMockReq({
       body: {
         post_id: 'post-123',
-        session_id: 'session-abc',
         reason: 'self_harm',
       },
+      userId: 'auth-user-id',
+      isAuthenticated: true,
     })
     const res = createMockRes()
 
@@ -148,9 +153,10 @@ describe('POST /api/reports — Validation', () => {
     const req = createMockReq({
       body: {
         post_id: 'post-123',
-        session_id: 'session-abc',
         reason: 'harassment',
       },
+      userId: 'auth-user-id',
+      isAuthenticated: true,
     })
     const res = createMockRes()
 
@@ -167,10 +173,11 @@ describe('POST /api/reports — Validation', () => {
     const req = createMockReq({
       body: {
         post_id: 'post-123',
-        session_id: 'session-abc',
         reason: 'harassment',
         note: 'x'.repeat(301),
       },
+      userId: 'auth-user-id',
+      isAuthenticated: true,
     })
     const res = createMockRes()
 

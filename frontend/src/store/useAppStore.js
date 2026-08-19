@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { v4 as uuidv4 } from 'uuid'
 import { DEFAULT_AVATAR } from '../data/avatarOptions'
 import { supabase } from '../lib/supabase'
+import { loadState, saveState, clearState } from '../lib/persistence'
 
 /**
  * Global Zustand store for AnonEmote.
@@ -18,13 +19,32 @@ const useAppStore = create((set, get) => ({
     supabase.auth.getSession().then(({ data: { session } }) => {
       const user = session?.user ?? null
       set({ authUser: user, isAuthenticated: !!user, authLoading: false })
+      if (user) {
+        get().initPersistence()
+      }
     })
 
     // Listen for auth state changes (login, logout, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         const user = session?.user ?? null
+
+        if (event === 'SIGNED_OUT') {
+          get().clearPersistedState()
+          set({
+            authUser: null,
+            isAuthenticated: false,
+            phase: 'landing',
+            avatar: { ...DEFAULT_AVATAR },
+            checkIn: { feeling: null, nuance: null, prompt: null },
+          })
+          return
+        }
+
         set({ authUser: user, isAuthenticated: !!user })
+        if (user && event === 'SIGNED_IN') {
+          get().initPersistence()
+        }
       }
     )
 
@@ -44,13 +64,19 @@ const useAppStore = create((set, get) => ({
   // ── App Phase ─────────────────────────────────────────────────────────────
   // 'landing' | 'auth' | 'avatar' | 'checkin' | 'space'
   phase: 'landing',
-  setPhase: (phase) => set({ phase }),
+  setPhase: (phase) => {
+    set({ phase })
+    get().persistState()
+  },
 
   // ── Emotion check-in ──────────────────────────────────────────────────────
   // Result of the pre-entry triage: which feeling, which nuance, and the
   // tailored writing prompt shown in the composer.
   checkIn: { feeling: null, nuance: null, prompt: null },
-  setCheckIn: (checkIn) => set({ checkIn }),
+  setCheckIn: (checkIn) => {
+    set({ checkIn })
+    get().persistState()
+  },
   clearCheckIn: () => set({ checkIn: { feeling: null, nuance: null, prompt: null } }),
 
   // ── Avatar ────────────────────────────────────────────────────────────────
@@ -59,7 +85,10 @@ const useAppStore = create((set, get) => ({
   //   auraColor: hex string
   //   particles: 'stardust' | 'rings' | 'none'
   avatar: { ...DEFAULT_AVATAR },
-  setAvatar: (avatar) => set((s) => ({ avatar: { ...s.avatar, ...avatar } })),
+  setAvatar: (avatar) => {
+    set((s) => ({ avatar: { ...s.avatar, ...avatar } }))
+    get().persistState()
+  },
   resetAvatar: () => set({ avatar: { ...DEFAULT_AVATAR } }),
 
   // ── Selected Planet ───────────────────────────────────────────────────────
@@ -249,6 +278,49 @@ const useAppStore = create((set, get) => ({
 
   // ── Pending metadata writes for retry ─────────────────────────────────────
   pendingMetadataWrites: [],
+
+  // ── Session Persistence ───────────────────────────────────────────────────
+  // Reads localStorage on login, writes on state changes, clears on sign-out.
+
+  /**
+   * Initialize persistence after Supabase Auth confirms a session.
+   * Reads localStorage for the authenticated user's namespace, validates,
+   * and restores phase/avatar/checkIn if the data is valid.
+   */
+  initPersistence: () => {
+    const { authUser } = get()
+    if (!authUser?.id) return
+
+    const restored = loadState(authUser.id)
+    if (restored) {
+      set({
+        phase: restored.phase,
+        avatar: restored.avatar,
+        checkIn: restored.checkIn,
+      })
+    }
+  },
+
+  /**
+   * Persist current phase/avatar/checkIn to localStorage.
+   * No-op for guests (Req 3.8 — guest localStorage isolation).
+   */
+  persistState: () => {
+    const { isAuthenticated, authUser, phase, avatar, checkIn } = get()
+    if (!isAuthenticated || !authUser?.id) return
+
+    saveState(authUser.id, { version: '1', phase, avatar, checkIn })
+  },
+
+  /**
+   * Clear all persisted state for the current user on sign-out.
+   */
+  clearPersistedState: () => {
+    const { authUser } = get()
+    if (!authUser?.id) return
+
+    clearState(authUser.id)
+  },
 }))
 
 export default useAppStore

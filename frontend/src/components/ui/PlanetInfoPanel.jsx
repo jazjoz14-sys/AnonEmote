@@ -4,6 +4,7 @@ import useDraggable from '../../hooks/useDraggable'
 import ReactionBar from './ReactionBar'
 import ReplyThread from './ReplyThread'
 import BottomSheet from './BottomSheet'
+import AuthPromptModal from '../modals/AuthPromptModal'
 import { apiFetch } from '../../lib/api'
 import { useIsSmallScreen, useViewportSize } from '../../lib/device'
 import { useOrientation } from '../../lib/viewport'
@@ -29,14 +30,13 @@ export default function PlanetInfoPanel({ postsLoading = false, maxHeight }) {
     selectedPlanet,
     setSelectedPlanet,
     setPostModalOpen,
-    setPhase,
     posts,
     sessionId,
     mergeReactions,
     isAuthenticated,
-    setPendingPlanetId,
     isOffline,
     postModalOpen,
+    setPendingPlanetId,
   } = useAppStore()
   const [showAuthPrompt, setShowAuthPrompt] = useState(false)
   const feedRef = useRef(null)
@@ -46,10 +46,11 @@ export default function PlanetInfoPanel({ postsLoading = false, maxHeight }) {
   const handleBroadcastClick = () => {
     if (isAuthenticated) {
       setPostModalOpen(true)
-    } else if (!isHintDismissed(HINT_GUEST_PROMPT)) {
-      setShowAuthPrompt(true)
     } else {
-      // Already dismissed — still show prompt (user needs to sign in to post)
+      // Save the selected planet so AuthScreen can navigate back to 'space' after login
+      if (selectedPlanet?.id) {
+        setPendingPlanetId(selectedPlanet.id)
+      }
       setShowAuthPrompt(true)
     }
   }
@@ -261,42 +262,12 @@ export default function PlanetInfoPanel({ postsLoading = false, maxHeight }) {
           </div>
         </BottomSheet>
 
-        {/* Auth prompt modal (mobile) */}
-        {showAuthPrompt && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6"
-               style={{ background: 'rgba(5,5,16,0.85)' }}
-               onClick={handleDismissAuthPrompt}>
-            <div className="max-w-xs w-full rounded-sm p-6 flex flex-col items-center gap-4 text-center
-                            border border-white/[0.1] animate-pop-in"
-                 style={{ background: 'rgba(10,10,26,0.97)' }}
-                 onClick={(e) => e.stopPropagation()}>
-              <img src="/icons/logo.png" alt="" className="w-12 h-12 opacity-80" draggable={false} />
-              <p className="text-white text-sm font-medium">Sign in to broadcast</p>
-              <p className="text-slate-400 text-xs leading-relaxed">
-                Create a free account to post, reply, and react. Your identity stays anonymous to other users.
-              </p>
-              <button
-                onClick={() => {
-                  setShowAuthPrompt(false)
-                  dismissHint(HINT_GUEST_PROMPT)
-                  setPendingPlanetId(selectedPlanet.id)
-                  setPhase('auth')
-                }}
-                className="w-full py-3 rounded-sm text-xs tracking-[0.15em] uppercase font-medium
-                           text-white border border-white/30
-                           hover:bg-white hover:text-[#050510] transition-all"
-              >
-                Sign In / Register
-              </button>
-              <button
-                onClick={handleDismissAuthPrompt}
-                className="text-xs text-slate-500 hover:text-slate-400 transition-colors"
-              >
-                Maybe later
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Auth prompt modal (mobile) — uses the proper AuthPromptModal component */}
+        <AuthPromptModal
+          open={showAuthPrompt}
+          onClose={handleDismissAuthPrompt}
+          planetContext={selectedPlanet?.label || selectedPlanet?.id}
+        />
       </>
     )
   }
@@ -417,42 +388,12 @@ export default function PlanetInfoPanel({ postsLoading = false, maxHeight }) {
       </div>
     </div>
 
-    {/* Auth prompt modal */}
-    {showAuthPrompt && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-6"
-           style={{ background: 'rgba(5,5,16,0.85)' }}
-           onClick={handleDismissAuthPrompt}>
-        <div className="max-w-xs w-full rounded-sm p-6 flex flex-col items-center gap-4 text-center
-                        border border-white/[0.1] animate-pop-in"
-             style={{ background: 'rgba(10,10,26,0.97)' }}
-             onClick={(e) => e.stopPropagation()}>
-          <img src="/icons/logo.png" alt="" className="w-12 h-12 opacity-80" draggable={false} />
-          <p className="text-white text-sm font-medium">Sign in to broadcast</p>
-          <p className="text-slate-400 text-xs leading-relaxed">
-            Create a free account to post, reply, and react. Your identity stays anonymous to other users.
-          </p>
-          <button
-            onClick={() => {
-              setShowAuthPrompt(false)
-              dismissHint(HINT_GUEST_PROMPT)
-              setPendingPlanetId(selectedPlanet.id)
-              setPhase('auth')
-            }}
-            className="w-full py-3 rounded-sm text-xs tracking-[0.15em] uppercase font-medium
-                       text-white border border-white/30
-                       hover:bg-white hover:text-[#050510] transition-all"
-          >
-            Sign In / Register
-          </button>
-          <button
-            onClick={handleDismissAuthPrompt}
-            className="text-xs text-slate-500 hover:text-slate-400 transition-colors"
-          >
-            Maybe later
-          </button>
-        </div>
-      </div>
-    )}
+    {/* Auth prompt modal — uses the proper AuthPromptModal component */}
+    <AuthPromptModal
+      open={showAuthPrompt}
+      onClose={handleDismissAuthPrompt}
+      planetContext={selectedPlanet?.label || selectedPlanet?.id}
+    />
     </>
   )
 }

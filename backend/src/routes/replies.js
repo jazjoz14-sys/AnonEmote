@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit'
 import { getSupabase } from '../lib/supabase.js'
 import { moderate } from '../moderation/engine.js'
 import { appendAudit } from '../lib/storage.js'
+import { requireAuth } from '../middleware/requireAuth.js'
 
 export const repliesRouter = Router()
 
@@ -30,7 +31,7 @@ repliesRouter.get('/', async (req, res) => {
 
   const { data, error } = await supabase
     .from('replies')
-    .select('id, content, session_id, created_at')
+    .select('id, content, created_at')
     .eq('post_id', post_id)
     .eq('is_hidden', false)
     .order('created_at', { ascending: true })
@@ -55,14 +56,15 @@ repliesRouter.get('/', async (req, res) => {
  * Replies are restricted to the 'advice' planet. The backend verifies the
  * parent post belongs to that planet.
  */
-repliesRouter.post('/', limiter, async (req, res) => {
+repliesRouter.post('/', limiter, requireAuth, async (req, res) => {
   const supabase = getSupabase()
   if (!supabase) return res.status(503).json({ error: 'Database not configured.' })
 
-  const { post_id, session_id, content } = req.body || {}
+  const { post_id, content } = req.body || {}
+  const session_id = req.userId
 
-  if (!post_id || !session_id || !content) {
-    return res.status(400).json({ error: 'post_id, session_id, and content are required.' })
+  if (!post_id || !content) {
+    return res.status(400).json({ error: 'post_id and content are required.' })
   }
 
   if (typeof content !== 'string' || content.length > 280) {

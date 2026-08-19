@@ -61,7 +61,9 @@ describe('POST /api/replies — Validation', () => {
 
       const req = createMockReq({
         method: 'POST',
-        body: { post_id: 'abc-123', session_id: 'sess-1', content: 'Hello' },
+        body: { post_id: 'abc-123', content: 'Hello' },
+        userId: 'auth-user-id',
+        isAuthenticated: true,
       })
       const res = createMockRes()
       const handler = getPostHandler()
@@ -77,7 +79,9 @@ describe('POST /api/replies — Validation', () => {
     it('returns 400 when post_id is missing', async () => {
       const req = createMockReq({
         method: 'POST',
-        body: { session_id: 'sess-1', content: 'Hello' },
+        body: { content: 'Hello' },
+        userId: 'auth-user-id',
+        isAuthenticated: true,
       })
       const res = createMockRes()
       const handler = getPostHandler()
@@ -88,24 +92,12 @@ describe('POST /api/replies — Validation', () => {
       expect(res._json.error).toContain('required')
     })
 
-    it('returns 400 when session_id is missing', async () => {
+    it('returns 400 when content is missing (session_id now comes from auth)', async () => {
       const req = createMockReq({
         method: 'POST',
-        body: { post_id: 'abc-123', content: 'Hello' },
-      })
-      const res = createMockRes()
-      const handler = getPostHandler()
-
-      await handler(req, res)
-
-      expect(res.status).toHaveBeenCalledWith(400)
-      expect(res._json.error).toContain('required')
-    })
-
-    it('returns 400 when content is missing', async () => {
-      const req = createMockReq({
-        method: 'POST',
-        body: { post_id: 'abc-123', session_id: 'sess-1' },
+        body: { post_id: 'abc-123' },
+        userId: 'auth-user-id',
+        isAuthenticated: true,
       })
       const res = createMockRes()
       const handler = getPostHandler()
@@ -122,7 +114,9 @@ describe('POST /api/replies — Validation', () => {
       const longContent = 'a'.repeat(281)
       const req = createMockReq({
         method: 'POST',
-        body: { post_id: 'abc-123', session_id: 'sess-1', content: longContent },
+        body: { post_id: 'abc-123', content: longContent },
+        userId: 'auth-user-id',
+        isAuthenticated: true,
       })
       const res = createMockRes()
       const handler = getPostHandler()
@@ -144,7 +138,9 @@ describe('POST /api/replies — Validation', () => {
 
       const req = createMockReq({
         method: 'POST',
-        body: { post_id: 'non-existent-id', session_id: 'sess-1', content: 'Hello' },
+        body: { post_id: 'non-existent-id', content: 'Hello' },
+        userId: 'auth-user-id',
+        isAuthenticated: true,
       })
       const res = createMockRes()
       const handler = getPostHandler()
@@ -164,7 +160,9 @@ describe('POST /api/replies — Validation', () => {
 
       const req = createMockReq({
         method: 'POST',
-        body: { post_id: 'some-id', session_id: 'sess-1', content: 'Hello' },
+        body: { post_id: 'some-id', content: 'Hello' },
+        userId: 'auth-user-id',
+        isAuthenticated: true,
       })
       const res = createMockRes()
       const handler = getPostHandler()
@@ -185,7 +183,9 @@ describe('POST /api/replies — Validation', () => {
 
       const req = createMockReq({
         method: 'POST',
-        body: { post_id: 'post-1', session_id: 'sess-1', content: 'Hello' },
+        body: { post_id: 'post-1', content: 'Hello' },
+        userId: 'auth-user-id',
+        isAuthenticated: true,
       })
       const res = createMockRes()
       const handler = getPostHandler()
@@ -206,7 +206,9 @@ describe('POST /api/replies — Validation', () => {
 
       const req = createMockReq({
         method: 'POST',
-        body: { post_id: 'post-2', session_id: 'sess-1', content: 'Need help' },
+        body: { post_id: 'post-2', content: 'Need help' },
+        userId: 'auth-user-id',
+        isAuthenticated: true,
       })
       const res = createMockRes()
       const handler = getPostHandler()
@@ -231,7 +233,9 @@ describe('POST /api/replies — Validation', () => {
 
         const req = createMockReq({
           method: 'POST',
-          body: { post_id: `post-${planet}`, session_id: 'sess-1', content: 'Test reply' },
+          body: { post_id: `post-${planet}`, content: 'Test reply' },
+          userId: 'auth-user-id',
+          isAuthenticated: true,
         })
         const res = createMockRes()
         const handler = getPostHandler()

@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import rateLimit from 'express-rate-limit'
 import { getSupabase } from '../lib/supabase.js'
+import { requireAuth } from '../middleware/requireAuth.js'
 
 export const reactionsRouter = Router()
 
@@ -68,14 +69,15 @@ reactionsRouter.get('/', async (req, res) => {
  *
  * Returns: { action: 'added'|'removed'|'switched', emoji: string|null }
  */
-reactionsRouter.post('/', limiter, async (req, res) => {
+reactionsRouter.post('/', limiter, requireAuth, async (req, res) => {
   const supabase = getSupabase()
   if (!supabase) return res.status(503).json({ error: 'Database not configured.' })
 
-  const { post_id, session_id, emoji } = req.body
+  const { post_id, emoji } = req.body
+  const session_id = req.userId
 
-  if (!post_id || !session_id || !emoji) {
-    return res.status(400).json({ error: 'post_id, session_id and emoji are required.' })
+  if (!post_id || !emoji) {
+    return res.status(400).json({ error: 'post_id and emoji are required.' })
   }
 
   // Reject anything outside the allowed emoji set — blocks arbitrary text

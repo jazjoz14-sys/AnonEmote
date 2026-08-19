@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit'
 import { getSupabase } from '../lib/supabase.js'
 import { moderate } from '../moderation/engine.js'
 import { appendAudit } from '../lib/storage.js'
+import { requireAuth } from '../middleware/requireAuth.js'
 
 export const moderationRouter = Router()
 
@@ -27,12 +28,11 @@ const limiter = rateLimit({
  *   500 — db error         → { error }
  *   200 — safe, saved      → { verdict: 'safe', post }
  */
-moderationRouter.post('/', limiter, async (req, res) => {
-  const { text, planet_id, session_id, sessionId } = req.body
+moderationRouter.post('/', limiter, requireAuth, async (req, res) => {
+  const { text, planet_id } = req.body
 
-  // Accept both field name conventions from the frontend
+  // Use authenticated user ID for both session_id and author_id
   const pid = planet_id
-  const sid = session_id || sessionId
 
   if (!text || typeof text !== 'string') {
     return res.status(400).json({ error: 'text is required.' })
@@ -92,12 +92,8 @@ moderationRouter.post('/', limiter, async (req, res) => {
   const insertPayload = {
     content: text.trim(),
     planet_id: pid,
-    session_id: req.userId || sid, // Use auth user ID if authenticated, otherwise session UUID
-  }
-
-  // Link post to authenticated user for accountability (hidden from other users)
-  if (req.userId) {
-    insertPayload.author_id = req.userId
+    session_id: req.userId,
+    author_id: req.userId,
   }
 
   // Attach drawing if provided (only allowed on the doodle planet)

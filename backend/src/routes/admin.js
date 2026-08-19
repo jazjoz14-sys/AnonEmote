@@ -242,14 +242,14 @@ adminRouter.get('/reports', requireAdmin, async (req, res) => {
   if (postIds.length > 0) {
     let { data: posts, error: postErr } = await supabase
       .from('posts')
-      .select('id, content, planet_id, is_hidden, created_at, review_status, report_score, flagged_at')
+      .select('id, content, planet_id, is_hidden, created_at, review_status, report_score, flagged_at, author_id')
       .in('id', postIds)
 
     // Graceful fallback if 003_report_integrity.sql has not been applied
     if (postErr) {
       const retry = await supabase
         .from('posts')
-        .select('id, content, planet_id, is_hidden, created_at')
+        .select('id, content, planet_id, is_hidden, created_at, author_id')
         .in('id', postIds)
       posts = retry.data
     }

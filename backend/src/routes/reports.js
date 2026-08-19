@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit'
 import { getSupabase } from '../lib/supabase.js'
 import { appendAudit } from '../lib/storage.js'
 import { reporterHash } from '../lib/reporterHash.js'
+import { requireAuth } from '../middleware/requireAuth.js'
 
 export const reportsRouter = Router()
 
@@ -43,14 +44,15 @@ const limiter = rateLimit({
  * Always returns 200 on a valid request, whether or not a duplicate was
  * detected, so a reporter can never learn who else has reported a post.
  */
-reportsRouter.post('/', limiter, async (req, res) => {
+reportsRouter.post('/', limiter, requireAuth, async (req, res) => {
   const supabase = getSupabase()
   if (!supabase) return res.status(503).json({ error: 'Database not configured.' })
 
-  const { post_id, session_id, reason, note } = req.body || {}
+  const { post_id, reason, note } = req.body || {}
+  const session_id = req.userId
 
-  if (!post_id || !session_id || !reason) {
-    return res.status(400).json({ error: 'post_id, session_id and reason are required.' })
+  if (!post_id || !reason) {
+    return res.status(400).json({ error: 'post_id and reason are required.' })
   }
   if (!VALID_REASONS.includes(reason)) {
     return res.status(400).json({ error: 'Invalid report reason.' })

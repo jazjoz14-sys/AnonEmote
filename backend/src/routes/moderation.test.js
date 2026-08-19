@@ -114,8 +114,10 @@ describe('POST /api/moderate — Verdict Handling', () => {
     getSupabase.mockReturnValue(mockSupabase)
 
     const req = createMockReq({
-      body: { text: 'I am happy', planet_id: 'joy', session_id: 'sess-1' },
+      body: { text: 'I am happy', planet_id: 'joy' },
       method: 'POST',
+      userId: 'auth-user-id',
+      isAuthenticated: true,
     })
     const res = createMockRes()
 
@@ -130,8 +132,10 @@ describe('POST /api/moderate — Verdict Handling', () => {
     moderate.mockResolvedValue({ verdict: 'crisis', layer: 'crisis-keywords' })
 
     const req = createMockReq({
-      body: { text: 'I want to end it all', planet_id: 'vent', session_id: 'sess-1' },
+      body: { text: 'I want to end it all', planet_id: 'vent' },
       method: 'POST',
+      userId: 'auth-user-id',
+      isAuthenticated: true,
     })
     const res = createMockRes()
 
@@ -148,8 +152,10 @@ describe('POST /api/moderate — Verdict Handling', () => {
     moderate.mockResolvedValue({ verdict: 'toxic', layer: 'vernacular-keywords', reason: 'Toxic content blocked.' })
 
     const req = createMockReq({
-      body: { text: 'Bad word here', planet_id: 'vent', session_id: 'sess-1' },
+      body: { text: 'Bad word here', planet_id: 'vent' },
       method: 'POST',
+      userId: 'auth-user-id',
+      isAuthenticated: true,
     })
     const res = createMockRes()
 
@@ -167,8 +173,10 @@ describe('POST /api/moderate — Database Error Handling', () => {
     getSupabase.mockReturnValue(null)
 
     const req = createMockReq({
-      body: { text: 'Hello world', planet_id: 'joy', session_id: 'sess-1' },
+      body: { text: 'Hello world', planet_id: 'joy' },
       method: 'POST',
+      userId: 'auth-user-id',
+      isAuthenticated: true,
     })
     const res = createMockRes()
 
@@ -187,8 +195,10 @@ describe('POST /api/moderate — Database Error Handling', () => {
     getSupabase.mockReturnValue(mockSupabase)
 
     const req = createMockReq({
-      body: { text: 'Hello world', planet_id: 'joy', session_id: 'sess-1' },
+      body: { text: 'Hello world', planet_id: 'joy' },
       method: 'POST',
+      userId: 'auth-user-id',
+      isAuthenticated: true,
     })
     const res = createMockRes()
 
