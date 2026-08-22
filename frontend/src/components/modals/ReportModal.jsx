@@ -1,7 +1,11 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import useAppStore from '../../store/useAppStore'
 import { REPORT_REASONS } from '../../data/reactions'
 import { apiFetch } from '../../lib/api'
+import ModalShell from '../ui/ModalShell'
+import Button from '../ui/Button'
+import Banner from '../ui/Banner'
+import { Z } from '../../design/tokens'
 
 /**
  * ReportModal — lets a reader flag a post.
@@ -9,6 +13,9 @@ import { apiFetch } from '../../lib/api'
  * Reports are anonymous and one per session per post. A post is auto-hidden
  * once three distinct sessions report it, which makes single-user brigading
  * ineffective.
+ *
+ * Uses ModalShell for responsive layout (BottomSheet on mobile portrait,
+ * centered card on landscape, draggable floating panel on desktop).
  */
 export default function ReportModal() {
   const { reportTarget, setReportTarget, sessionId, removePost } = useAppStore()
@@ -18,14 +25,20 @@ export default function ReportModal() {
   const [status, setStatus] = useState('idle') // idle | sending | done | error
   const [referral, setReferral] = useState(null)
 
-  if (!reportTarget) return null
+  const open = Boolean(reportTarget)
 
-  const close = () => {
-    setReportTarget(null)
+  /** Reset all internal state to defaults. */
+  const resetState = () => {
     setReason(null)
     setNote('')
     setStatus('idle')
     setReferral(null)
+  }
+
+  /** Close modal without submitting, reset state. */
+  const handleClose = () => {
+    setReportTarget(null)
+    resetState()
   }
 
   const handleSubmit = async () => {
@@ -53,7 +66,7 @@ export default function ReportModal() {
       removePost(reportTarget.id)
 
       // Auto-close unless we're showing crisis resources
-      if (!data.referral) setTimeout(close, 1800)
+      if (!data.referral) setTimeout(handleClose, 1800)
     } catch (err) {
       console.error('[ReportModal]', err)
       setStatus('error')
@@ -61,16 +74,18 @@ export default function ReportModal() {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-[90] flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Report this post"
+    <ModalShell
+      open={open}
+      onClose={handleClose}
+      type="modal"
+      zIndex={Z.REPORT_MODAL}
+      desktopWidth={448}
+      draggable={false}
+      ariaLabel="Report this post"
     >
-      <div className="glass-dark w-full max-w-md rounded-3xl p-6 flex flex-col gap-5 animate-slide-up">
+      <div className="p-6 flex flex-col gap-5">
 
-        {/* ── Success state ──────────────────────────────────────────────── */}
+        {/* ── Success state ──────────────────────────────────────────── */}
         {status === 'done' ? (
           <>
             <div className="flex flex-col items-center gap-3 text-center">
@@ -88,7 +103,7 @@ export default function ReportModal() {
                 {referral.hotlines?.map((h) => (
                   <div
                     key={h.name}
-                    className="glass rounded-xl px-4 py-2.5 flex items-center justify-between"
+                    className="border border-white/[0.08] bg-white/[0.03] rounded-xl px-4 py-2.5 flex items-center justify-between"
                   >
                     <span className="text-sm text-white">{h.name}</span>
                     <span className="text-sm font-mono font-bold text-violet-300">
@@ -99,18 +114,17 @@ export default function ReportModal() {
               </div>
             )}
 
-            <button
-              onClick={close}
-              className="w-full py-3 rounded-xl font-semibold text-white text-sm
-                         bg-gradient-to-r from-violet-700 to-indigo-700
-                         hover:from-violet-600 hover:to-indigo-600 transition-all"
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={handleClose}
             >
               Return to Space
-            </button>
+            </Button>
           </>
         ) : (
           <>
-            {/* ── Header ──────────────────────────────────────────────────── */}
+            {/* ── Header ──────────────────────────────────────────────── */}
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="font-bold text-white text-lg">Report this post</h2>
@@ -119,21 +133,25 @@ export default function ReportModal() {
                 </p>
               </div>
               <button
-                onClick={close}
-                className="text-slate-500 hover:text-white transition-colors text-xl leading-none"
-                aria-label="Cancel"
+                onClick={handleClose}
+                className="text-slate-500 hover:text-white transition-colors text-xl leading-none
+                           min-w-[44px] min-h-[44px] flex items-center justify-center
+                           focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70"
+                aria-label="Close report dialog"
               >
                 ✕
               </button>
             </div>
 
-            {/* ── Quoted post ─────────────────────────────────────────────── */}
-            <div className="glass rounded-xl px-3 py-2 text-xs text-slate-400 italic
-                            max-h-20 overflow-y-auto">
-              “{reportTarget.content}”
-            </div>
+            {/* ── Quoted post preview ─────────────────────────────────── */}
+            {reportTarget && (
+              <div className="bg-white/[0.02] border border-white/[0.08] rounded-xl px-3 py-2
+                              text-xs text-slate-400 italic max-h-20 overflow-y-auto">
+                "{reportTarget.content}"
+              </div>
+            )}
 
-            {/* ── Reason picker ───────────────────────────────────────────── */}
+            {/* ── Reason picker ───────────────────────────────────────── */}
             <fieldset className="flex flex-col gap-1.5">
               <legend className="text-xs font-semibold uppercase tracking-widest
                                  text-slate-500 mb-1.5">
@@ -143,7 +161,7 @@ export default function ReportModal() {
                 <label
                   key={r.id}
                   className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm
-                              cursor-pointer transition-all
+                              cursor-pointer transition-all min-h-[44px]
                               ${reason === r.id
                                 ? 'bg-violet-600/25 text-white ring-1 ring-violet-500/50'
                                 : 'text-slate-400 hover:bg-white/5'}`}
@@ -161,7 +179,7 @@ export default function ReportModal() {
               ))}
             </fieldset>
 
-            {/* ── Optional note ───────────────────────────────────────────── */}
+            {/* ── Optional note ───────────────────────────────────────── */}
             <div>
               <label
                 htmlFor="report-note"
@@ -173,49 +191,54 @@ export default function ReportModal() {
               <textarea
                 id="report-note"
                 value={note}
-                onChange={(e) => e.target.value.length <= 300 && setNote(e.target.value)}
+                onChange={(e) => {
+                  if (e.target.value.length <= 300) setNote(e.target.value)
+                }}
+                maxLength={300}
                 rows={2}
                 placeholder="Anything else our reviewers should know?"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2
+                className="w-full bg-white/[0.03] border border-white/[0.1] rounded-xl px-3 py-2
                            text-slate-200 placeholder-slate-600 text-sm resize-none
-                           focus:outline-none focus:border-violet-500/60
-                           focus:ring-1 focus:ring-violet-500/30 transition-colors"
+                           focus:outline-none focus:border-white/25
+                           transition-colors duration-200 min-h-[44px]"
               />
+              <p className="text-xs text-slate-600 mt-1 text-right">
+                {note.length}/300
+              </p>
             </div>
 
+            {/* ── Error banner ─────────────────────────────────────────── */}
             {status === 'error' && (
-              <div className="flex items-start gap-2 bg-orange-900/30 border
-                              border-orange-700/40 rounded-xl px-4 py-3 text-sm
-                              text-orange-300">
-                <span>⚠️</span>
-                <p>Could not submit the report. Please try again.</p>
-              </div>
+              <Banner type="warning">
+                <span className="flex items-start gap-2">
+                  <span>⚠️</span>
+                  <span>Could not submit the report. Please try again.</span>
+                </span>
+              </Banner>
             )}
 
-            {/* ── Actions ─────────────────────────────────────────────────── */}
+            {/* ── Actions ─────────────────────────────────────────────── */}
             <div className="flex gap-3">
-              <button
-                onClick={close}
-                className="flex-1 py-3 rounded-xl text-sm text-slate-400 glass
-                           hover:text-white transition-colors"
+              <Button
+                variant="secondary"
+                fullWidth
+                onClick={handleClose}
               >
                 Cancel
-              </button>
-              <button
-                onClick={handleSubmit}
+              </Button>
+              <Button
+                variant="destructive"
+                fullWidth
                 disabled={!reason || status === 'sending'}
-                className="flex-1 py-3 rounded-xl font-semibold text-white text-sm
-                           bg-gradient-to-r from-red-700 to-rose-700
-                           hover:from-red-600 hover:to-rose-600
-                           disabled:opacity-40 disabled:cursor-not-allowed
-                           transition-all duration-200"
+                loading={status === 'sending'}
+                onClick={handleSubmit}
               >
-                {status === 'sending' ? 'Submitting…' : 'Submit report'}
-              </button>
+                Submit report
+              </Button>
             </div>
           </>
         )}
       </div>
-    </div>
+    </ModalShell>
   )
 }

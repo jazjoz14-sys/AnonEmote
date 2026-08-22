@@ -156,6 +156,8 @@ export default function DrawingCanvas({ width = 360, height = 360, onChange }) {
           onClick={() => setErasing((v) => !v)}
           className={`px-2 py-1 rounded-lg text-xs transition-all
             ${erasing ? 'bg-white/20 text-white' : 'text-slate-400 hover:text-white'}`}
+          aria-label={erasing ? 'Eraser (active)' : 'Eraser'}
+          aria-pressed={erasing}
         >
           🧹
         </button>

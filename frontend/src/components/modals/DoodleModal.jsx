@@ -1,10 +1,13 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import useAppStore from '../../store/useAppStore'
-import useDraggable from '../../hooks/useDraggable'
 import { apiFetch } from '../../lib/api'
-import { useIsSmallScreen, useIsLandscape } from '../../lib/device'
+import { useIsSmallScreen, useViewportSize } from '../../lib/device'
+import { useOrientation } from '../../lib/viewport'
+import { Z } from '../../design/tokens'
 import DrawingCanvas from '../ui/DrawingCanvas'
 import ConfirmDialog from '../ui/ConfirmDialog'
+import ModalShell from '../ui/ModalShell'
+import Button from '../ui/Button'
 
 /**
  * DoodleModal — canvas-based post composer for the Doodle Drift planet.
@@ -16,34 +19,37 @@ import ConfirmDialog from '../ui/ConfirmDialog'
  * community reports path handles inappropriate content — same thresholds and
  * admin review workflow as text posts.
  *
- * Landscape adaptation (Requirement 11.7):
- *   - Centered card, 90% viewport width, 85dvh max height
- *   - Canvas maintains 1:1 aspect ratio sized to fit within available space
+ * Layout modes (handled by ModalShell):
+ *   - Mobile portrait: bottom sheet, canvas = min(vw-48, 280) square
+ *   - Landscape mobile: centered card (90vw, 85dvh), canvas fits height-120px
+ *   - Desktop: draggable panel, canvas 340×340, panel width = canvas+40px
+ *
+ * Requirements: 11.1–11.8
  */
 export default function DoodleModal() {
   const { selectedPlanet, setPostModalOpen, sessionId, addPost } = useAppStore()
   const isMobile = useIsSmallScreen()
-  const isLandscape = useIsLandscape()
+  const { isLandscape } = useOrientation()
+  const { width: viewportWidth, height: viewportHeight } = useViewportSize()
 
   const [drawing, setDrawing] = useState(null)
   const [status, setStatus] = useState('idle') // idle | sending | success | error
   const [errorMsg, setErrorMsg] = useState('')
   const [showConfirm, setShowConfirm] = useState(false)
 
-  // In landscape: canvas fits within the centered card (85dvh - header/actions ~120px)
-  // In portrait mobile: constrained to viewport width
-  const canvasSize = isLandscape && isMobile
-    ? Math.min(Math.floor(window.innerHeight * 0.85 - 120), Math.floor(window.innerWidth * 0.9 - 48))
+  // ─── Canvas sizing logic ──────────────────────────────────────────────────
+  // Landscape mobile: canvas fits within available height minus header/actions (~120px)
+  // Portrait mobile: min(vw - 48, 280) square
+  // Desktop: fixed 340×340px
+  const isLandscapeMobile = isMobile && isLandscape && viewportHeight < 500
+  const canvasSize = isLandscapeMobile
+    ? Math.min(Math.floor(viewportHeight * 0.85 - 120), Math.floor(viewportWidth * 0.9 - 48))
     : isMobile
-      ? Math.min(280, window.innerWidth - 48)
+      ? Math.min(280, viewportWidth - 48)
       : 340
 
+  // Desktop panel width = canvas + 40px padding
   const PANEL_W = canvasSize + 40
-
-  const { position, isDragging, dragProps, handleProps } = useDraggable({
-    width: PANEL_W,
-    height: canvasSize + 200,
-  })
 
   /**
    * KNOWN LIMITATION: Drawing moderation bypass
@@ -55,9 +61,6 @@ export default function DoodleModal() {
    * Backstop: The community report system (same thresholds and admin review
    * workflow as text posts) handles inappropriate drawings. Multiple independent
    * reports trigger auto-quarantine.
-   *
-   * This does NOT affect text posts — those still go through the full three-layer
-   * hybrid moderation pipeline (crisis → vernacular → Perspective API).
    */
   const handleSubmit = async () => {
     if (!drawing || status === 'sending') return
@@ -65,8 +68,6 @@ export default function DoodleModal() {
     setErrorMsg('')
 
     try {
-      // Drawings bypass the text moderation engine (there's no text to scan).
-      // They go directly to the posts table with content set to a placeholder.
       const res = await apiFetch('/api/moderate', {
         method: 'POST',
         body: JSON.stringify({
@@ -97,17 +98,17 @@ export default function DoodleModal() {
     }
   }
 
+  // ─── Close / dirty-close logic ────────────────────────────────────────────
   const handleClose = () => {
-    // If the canvas has content, show confirmation dialog instead of closing immediately
+    // Requirement 11.5: non-null drawing → show ConfirmDialog
     if (drawing) {
       setShowConfirm(true)
       return
     }
-    // Canvas is blank — close immediately without confirmation
+    // Requirement 11.6: blank canvas → close immediately without confirm
     doClose()
   }
 
-  // Actual close logic — called when canvas is blank or user confirms discard
   const doClose = () => {
     setPostModalOpen(false)
     setDrawing(null)
@@ -127,133 +128,93 @@ export default function DoodleModal() {
     setShowConfirm(false)
   }
 
-  // On mobile landscape: centered card, 90% width, 85dvh
-  // On mobile portrait: fixed bottom sheet, no dragging
-  // On desktop: draggable floating panel
-  const wrapperClass = isLandscape && isMobile
-    ? 'fixed inset-0 z-50 flex items-center justify-center'
-    : isMobile
-      ? 'fixed bottom-0 left-0 right-0 z-50 glass-dark rounded-t-3xl p-4 safe-bottom animate-slide-up'
-      : 'fixed z-50 glass-dark rounded-3xl p-5 shadow-2xl shadow-black/60 animate-pop-in'
-
-  const wrapperStyle = isLandscape && isMobile
-    ? {}
-    : isMobile
-      ? { maxHeight: '90vh', border: `1px solid ${selectedPlanet?.color}44`, borderBottom: 'none' }
-      : {
-          ...dragProps.style,
-          left: position.x,
-          top: position.y,
-          width: PANEL_W,
-          maxWidth: 'calc(100vw - 24px)',
-          border: `1px solid ${selectedPlanet?.color}44`,
-          boxShadow: isDragging
-            ? '0 25px 60px rgba(0,0,0,0.7)'
-            : '0 12px 40px rgba(0,0,0,0.5)',
-        }
-
-  // Inner card for landscape mode
-  const innerCardStyle = isLandscape && isMobile
-    ? {
-        maxWidth: '90vw',
-        maxHeight: '85dvh',
-        width: PANEL_W + 'px',
-        border: `1px solid ${selectedPlanet?.color}44`,
-      }
-    : undefined
-
   return (
     <>
-    <div
-      className={wrapperClass}
-      style={wrapperStyle}
-      role="dialog"
-      aria-label="Draw on Doodle Drift"
-      {...(!isMobile ? dragProps : {})}
-    >
-      <div
-        className={isLandscape && isMobile
-          ? 'glass-dark rounded-3xl p-4 shadow-2xl shadow-black/60 flex flex-col overflow-hidden'
-          : 'flex flex-col gap-3'}
-        style={innerCardStyle}
+      <ModalShell
+        open={true}
+        onClose={handleClose}
+        type="panel"
+        zIndex={Z.DOODLE_MODAL}
+        draggable
+        desktopWidth={PANEL_W}
+        ariaLabel="Draw on Doodle Drift"
       >
-        {/* Header — drag handle */}
-        <div
-          className="flex items-center justify-between"
-          {...(!isMobile ? handleProps : {})}
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🎨</span>
-            <div>
-              <h2 className="font-bold text-white text-sm">Doodle Drift</h2>
-              <p className="text-xs text-slate-400">Draw what you feel</p>
+        <div className="flex flex-col gap-3 p-4">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl" aria-hidden="true">🎨</span>
+              <div>
+                <h2 className="font-bold text-white text-sm">Doodle Drift</h2>
+                <p className="text-xs text-slate-400">Draw what you feel</p>
+              </div>
             </div>
+            <button
+              onClick={handleClose}
+              className="text-slate-500 hover:text-white text-sm transition-colors
+                         flex items-center justify-center"
+              style={{ width: '44px', height: '44px' }}
+              aria-label="Close"
+            >
+              ✕
+            </button>
           </div>
-          <button
-            onClick={handleClose}
-            className="text-slate-500 hover:text-white text-lg px-2"
-            aria-label="Close"
-          >
-            ✕
-          </button>
-        </div>
 
-        {/* Canvas */}
-        <DrawingCanvas
-          width={canvasSize}
-          height={canvasSize}
-          onChange={setDrawing}
-        />
+          {/* Canvas */}
+          <DrawingCanvas
+            width={canvasSize}
+            height={canvasSize}
+            onChange={setDrawing}
+          />
 
-        {/* Status */}
-        {status === 'success' && (
-          <p className="text-sm text-emerald-300 text-center">
-            ✅ Your doodle has been broadcast to the stars.
+          {/* Status messages */}
+          {status === 'success' && (
+            <p className="text-sm text-emerald-300 text-center">
+              Your doodle has been broadcast to the stars.
+            </p>
+          )}
+          {status === 'error' && (
+            <p className="text-sm text-orange-300 text-center">{errorMsg}</p>
+          )}
+
+          {/* Disclaimer */}
+          <p className="text-[10px] text-slate-600 leading-relaxed">
+            Drawings cannot be auto-moderated by AI. If someone posts something
+            inappropriate, use the report button — the same community review
+            process applies.
           </p>
-        )}
-        {status === 'error' && (
-          <p className="text-sm text-orange-300 text-center">⚠ {errorMsg}</p>
-        )}
 
-        {/* Disclaimer */}
-        <p className="text-[10px] text-slate-600 leading-relaxed">
-          Drawings cannot be auto-moderated by AI. If someone posts something
-          inappropriate, use the report button — the same community review
-          process applies.
-        </p>
-
-        {/* Actions */}
-        <div className="flex gap-2">
-          <button
-            onClick={handleClose}
-            className="flex-1 py-3 rounded-xl text-sm text-slate-400 glass
-                       hover:text-white transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={!drawing || status === 'sending' || status === 'success'}
-            className="flex-1 py-3 rounded-xl font-semibold text-white text-sm
-                       bg-gradient-to-r from-orange-500 to-amber-500
-                       hover:from-orange-400 hover:to-amber-400
-                       disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-          >
-            {status === 'sending' ? '⏳ Saving...' : status === 'success' ? '✓ Sent!' : '🎨 Broadcast'}
-          </button>
+          {/* Actions — Requirement 11.7, 11.8 */}
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              fullWidth
+              onClick={handleClose}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={handleSubmit}
+              disabled={!drawing || status === 'sending' || status === 'success'}
+              loading={status === 'sending'}
+            >
+              {status === 'success' ? '✓ Sent!' : '🎨 Broadcast'}
+            </Button>
+          </div>
         </div>
-      </div>
-    </div>
+      </ModalShell>
 
-    {/* Confirmation dialog — shown when closing with a non-blank canvas */}
-    <ConfirmDialog
-      open={showConfirm}
-      message="Discard your drawing?"
-      cancelLabel="Keep Drawing"
-      confirmLabel="Discard"
-      onCancel={handleCancelDiscard}
-      onConfirm={handleConfirmDiscard}
-    />
+      {/* Confirmation dialog — shown when closing with a non-blank canvas */}
+      <ConfirmDialog
+        open={showConfirm}
+        message="Discard your drawing?"
+        cancelLabel="Keep Drawing"
+        confirmLabel="Discard"
+        onCancel={handleCancelDiscard}
+        onConfirm={handleConfirmDiscard}
+      />
     </>
   )
 }

@@ -141,6 +141,7 @@ export default function ReplyThread({ post, accentColor }) {
                 open={showAuthPrompt}
                 onClose={() => setShowAuthPrompt(false)}
                 planetContext={selectedPlanet?.label || post.planet_id}
+                actionLabel="Sign in to offer advice"
               />
             </>
           ) : !composing ? (

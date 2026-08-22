@@ -15,6 +15,7 @@ import PlanetInfoPanel from '../components/ui/PlanetInfoPanel'
 import OnboardingOverlay from '../components/ui/OnboardingOverlay'
 import { supabase } from '../lib/supabase'
 import { isHintDismissed, dismissHint, HINT_PLANET_PULSE } from '../lib/hintStore'
+import { PLANETS } from '../data/planets'
 
 // Scratch objects — allocated once, reused every frame
 const _desiredCamPos = new THREE.Vector3()
@@ -196,7 +197,7 @@ function ContextLossGuard({ onLost }) {
 
 export default function SpaceScreen() {
   const {
-    setPosts, selectedPlanet,
+    setPosts, selectedPlanet, setSelectedPlanet,
     crisis, reportTarget, postModalOpen,
     onboarding, startOnboarding,
   } = useAppStore()
@@ -382,13 +383,61 @@ export default function SpaceScreen() {
     }
   }, [setPosts])
 
+  // ─── Keyboard navigation for 3D canvas (Req 19.8) ─────────────────────────
+  // Allows planet selection via Tab (cycle), Enter (select), Escape (exit).
+  // This is an alternative path alongside PlanetNav's button-based navigation.
+  const canvasWrapperRef = useRef(null)
+  const [kbFocusedIndex, setKbFocusedIndex] = useState(null)
+
+  const handleCanvasKeyDown = useCallback((e) => {
+    // Only handle keys when the canvas wrapper itself is focused
+    if (e.target !== canvasWrapperRef.current) return
+
+    if (e.key === 'Tab') {
+      e.preventDefault()
+      setKbFocusedIndex((prev) => {
+        if (prev === null) return 0
+        if (e.shiftKey) {
+          return prev <= 0 ? PLANETS.length - 1 : prev - 1
+        }
+        return prev >= PLANETS.length - 1 ? 0 : prev + 1
+      })
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      if (kbFocusedIndex !== null && PLANETS[kbFocusedIndex]) {
+        setSelectedPlanet(PLANETS[kbFocusedIndex])
+        setKbFocusedIndex(null)
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      setKbFocusedIndex(null)
+      canvasWrapperRef.current?.blur()
+    }
+  }, [kbFocusedIndex, setSelectedPlanet])
+
+  // Clear keyboard focus indicator when canvas wrapper loses focus
+  const handleCanvasBlur = useCallback(() => {
+    setKbFocusedIndex(null)
+  }, [])
+
   return (
     <div className="relative w-full" style={{ height: isSmallScreen ? 'var(--app-height, 100dvh)' : '100%' }}>
+      {/* Canvas wrapper — keyboard-navigable for planet selection */}
+      <div
+        ref={canvasWrapperRef}
+        tabIndex={0}
+        role="application"
+        aria-label="3D star system — use Tab to cycle planets, Enter to select, Escape to exit"
+        onKeyDown={handleCanvasKeyDown}
+        onBlur={handleCanvasBlur}
+        className="relative w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-violet-500/60"
+        style={{ height: isSmallScreen ? 'var(--content-height, calc(100dvh - 84px))' : '100%' }}
+      >
       <Canvas
         camera={{ position: [0, 8, 40], fov: 60 }}
         className="w-full"
         style={{
-          height: isSmallScreen ? 'var(--content-height, calc(100dvh - 84px))' : '100%',
+          height: '100%',
           pointerEvents: modalOpen ? 'none' : 'auto',
         }}
         // Cap pixel ratio — on high-DPI screens an uncapped dpr can allocate
@@ -482,6 +531,26 @@ export default function SpaceScreen() {
           />
         </Suspense>
       </Canvas>
+
+        {/* Keyboard navigation focus indicator — shows which planet is highlighted
+            while the user cycles through them with Tab */}
+        {kbFocusedIndex !== null && PLANETS[kbFocusedIndex] && (
+          <div
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10
+                       bg-[#0a0a1a]/90 border border-violet-500/40 rounded-lg
+                       px-4 py-2 pointer-events-none animate-fade-in"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            <span className="text-xs text-white tracking-wide">
+              <span className="mr-1.5">{PLANETS[kbFocusedIndex].emoji}</span>
+              <span className="text-violet-300 font-medium">{PLANETS[kbFocusedIndex].label}</span>
+              <span className="ml-2 text-slate-400">— press Enter to select</span>
+            </span>
+          </div>
+        )}
+      </div>
 
       <HUD peerCount={peers.length} />
       <PlanetNav showPulseHint={showPulseHint} onPlanetClick={handlePulseDismiss} />

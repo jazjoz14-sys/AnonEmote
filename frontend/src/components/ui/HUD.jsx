@@ -7,21 +7,22 @@ import PrivateNotesPanel from './PrivateNotesPanel'
 /**
  * HUD — minimal overlay on the SpaceScreen.
  *
- * OkayDev-inspired: minimal chrome, uppercase micro-labels, border-only
- * buttons, monochrome with one accent. The 3D scene is the star — the UI
- * stays out of the way.
+ * Design tokens applied:
+ *   - Uppercase micro-labels (text-[10px]/text-[11px], uppercase, tracking-[0.15em])
+ *   - Outline-only buttons: 1px border border-white/30, no fill, text-white, rounded-sm
+ *   - Monochrome palette with emerald (#10b981) ONLY for presence indicator dot
+ *   - focus-visible: 2px white/70 outline offset by 2px on all interactive buttons
+ *   - Guest indicator: "Viewing as guest" text-[10px] text-slate-500 when not authenticated
  *
  * Responsive sizing:
- *   Mobile (< 768px): 8px v-padding, 12px h-padding, 20×20 logo, 10px font,
- *     hide right spacer, justify-between, total height ≤ 40px
- *   Desktop (≥ 768px): 16px v-padding, 24px h-padding, 24×24 logo, 6×6 pulse dot
- *   Landscape: 4px v-padding, total height ≤ 32px
+ *   Mobile (< 768px): total height ≤ 40px (including safe-area-inset-top)
+ *   Landscape mobile: total height ≤ 32px (including safe-area-inset-top)
+ *   Desktop (≥ 768px): 16px v-padding, 24px h-padding
  *
- * All viewports: padding-top includes env(safe-area-inset-top, 0px)
- * Mobile back button: 44×44px tap area via invisible padding
+ * Mobile buttons: 44×44px tap area via invisible padding extenders.
  */
 export default function HUD({ peerCount = 0 }) {
-  const { setPhase, privateNotes, onboarding, startOnboarding } = useAppStore()
+  const { setPhase, privateNotes, onboarding, startOnboarding, isAuthenticated } = useAppStore()
   const [notesOpen, setNotesOpen] = useState(false)
   const isMobile = useIsSmallScreen()
   const { isLandscape } = useOrientation()
@@ -33,8 +34,7 @@ export default function HUD({ peerCount = 0 }) {
     <>
       {/* ── Top bar ────────────────────────────────────────────────────── */}
       <div
-        className={`fixed top-0 left-0 right-0 z-[20] flex items-center
-          ${isMobile ? 'justify-between' : 'justify-between'}
+        className={`fixed top-0 left-0 right-0 z-[20] flex items-center justify-between
           ${isLandscapeMobile
             ? 'px-3 py-1'
             : isMobile
@@ -57,24 +57,21 @@ export default function HUD({ peerCount = 0 }) {
       >
         {/* Left: back + notes */}
         <div className="flex items-center gap-2">
-          {/* Back button — mobile uses 44×44 tap area with invisible padding */}
+          {/* Back button — outline-only, uppercase micro-label */}
           <button
             onClick={() => setPhase('avatar')}
-            className={`relative rounded-sm uppercase tracking-[0.1em]
-              text-slate-300 border border-white/[0.15]
-              hover:text-white hover:border-white/30 transition-all
+            className={`relative rounded-sm uppercase tracking-[0.15em]
+              text-white border border-white/30
+              hover:text-white hover:bg-white/[0.05] transition-all duration-200
+              focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70
               ${isMobile
                 ? 'px-2 py-1 text-[10px]'
                 : 'px-3 py-1.5 text-xs'
               }
             `}
-            style={isMobile ? {
-              // Invisible padding to reach 44×44px tap target
-              // The visible button is small; we extend tap area with ::before
-            } : undefined}
             aria-label="Back to avatar"
           >
-            {/* Invisible tap target extender for mobile */}
+            {/* Invisible tap target extender for mobile (44×44px) */}
             {isMobile && (
               <span
                 className="absolute inset-0 -m-2"
@@ -88,9 +85,10 @@ export default function HUD({ peerCount = 0 }) {
           {privateNotes.length > 0 && (
             <button
               onClick={() => setNotesOpen((v) => !v)}
-              className={`relative rounded-sm uppercase tracking-[0.1em]
-                text-slate-300 border border-white/[0.15]
-                hover:text-white hover:border-white/30 transition-all
+              className={`relative rounded-sm uppercase tracking-[0.15em]
+                text-white border border-white/30
+                hover:text-white hover:bg-white/[0.05] transition-all duration-200
+                focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70
                 ${isMobile
                   ? 'px-2 py-1 text-[10px]'
                   : 'px-3 py-1.5 text-xs'
@@ -110,7 +108,7 @@ export default function HUD({ peerCount = 0 }) {
           )}
         </div>
 
-        {/* Centre: logo + online */}
+        {/* Centre: logo + online + guest indicator */}
         <div className="flex items-center gap-2 md:gap-3">
           <img
             src="/icons/logo.png"
@@ -122,12 +120,19 @@ export default function HUD({ peerCount = 0 }) {
             <span className={`flex items-center gap-1 text-emerald-400 tracking-[0.05em]
               ${isMobile ? 'text-[10px] gap-1' : 'text-xs gap-1.5'}
             `}>
+              {/* Emerald presence dot — the only accent color in HUD */}
               <span
                 className={`rounded-full bg-emerald-400 animate-pulse
                   ${isMobile ? 'w-1 h-1' : 'w-1.5 h-1.5'}
                 `}
               />
               {peerCount + 1} online
+            </span>
+          )}
+          {/* Guest read-only indicator (Req 17.1) — only shown when not authenticated */}
+          {!isAuthenticated && (
+            <span className="text-[10px] text-slate-500 uppercase tracking-[0.1em]">
+              Viewing as guest
             </span>
           )}
         </div>
@@ -137,9 +142,10 @@ export default function HUD({ peerCount = 0 }) {
           {!onboarding.active && (
             <button
               onClick={() => startOnboarding()}
-              className={`relative rounded-full uppercase tracking-[0.1em]
-                text-slate-300 border border-white/[0.15]
-                hover:text-white hover:border-white/30 transition-all
+              className={`relative rounded-full uppercase tracking-[0.15em]
+                text-white border border-white/30
+                hover:text-white hover:bg-white/[0.05] transition-all duration-200
+                focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70
                 flex items-center justify-center
                 ${isMobile
                   ? 'w-7 h-7 text-[11px]'
@@ -149,7 +155,7 @@ export default function HUD({ peerCount = 0 }) {
               aria-label="Replay onboarding tutorial"
               title="Help — replay tutorial"
             >
-              {/* Invisible tap target extender for mobile */}
+              {/* Invisible tap target extender for mobile (44×44px) */}
               {isMobile && (
                 <span
                   className="absolute inset-0 -m-2"

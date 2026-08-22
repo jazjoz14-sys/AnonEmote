@@ -3,43 +3,26 @@ import useAppStore from '../../store/useAppStore'
 import { SHAPES, AURA_COLORS, PARTICLE_EFFECTS } from '../../data/avatarOptions'
 import { useIsSmallScreen, useViewportSize } from '../../lib/device'
 import { useOrientation } from '../../lib/viewport'
+import Card from './Card'
+import Button from './Button'
 
 /**
- * AvatarCustomizer — glassmorphism overlay for building the abstract avatar.
+ * AvatarCustomizer — panel for building the abstract avatar.
  *
  * Mobile (< 768px) Portrait:
- *   Renders as a bottom-anchored panel at max 55dvh. Panel is scrollable
- *   with overscroll-behavior-y: contain. "Continue" button is sticky at bottom.
- *   When viewport height < 600px (landscape phones): reduce to 45dvh max,
- *   collapse accordions by default.
+ *   Renders as a bottom-anchored panel filling remaining viewport below the 45dvh canvas.
+ *   Panel is independently scrollable with overscroll-behavior-y: contain.
+ *   "Continue" button is sticky at bottom.
  *
  * Mobile Landscape:
  *   Right-aligned side panel at max 320px width. Canvas fills remaining left.
  *
- * Desktop (≥ 768px):
- *   Original overlaid glassmorphism panel on the right.
+ * Desktop (>= 768px):
+ *   Overlaid panel on the right with bg-[#0d0d2b] solid background.
  *
- * Shape grid always uses 5-column layout with compact padding on mobile.
+ * NO glass-morphism: solid bg-[#0d0d2b] with border border-white/[0.08].
+ * Selection options use Card variant="interactive" with selected state.
  */
-
-/** Shared option-button styling with a selected state. */
-function OptionButton({ selected, onClick, children, accent, className = '', style }) {
-  return (
-    <button
-      onClick={onClick}
-      aria-pressed={selected}
-      className={`rounded-2xl px-4 py-3 text-sm transition-all duration-200
-                  focus:outline-none focus:ring-2 focus:ring-violet-400/60
-                  ${selected
-                    ? 'bg-white/15 text-white ring-1'
-                    : 'bg-white/[0.06] text-slate-400 hover:bg-white/10 hover:text-slate-200'}
-                  ${className}`}
-      style={{ ...(selected && accent ? { '--tw-ring-color': accent } : {}), ...style }}
-    >
-      {children}
-    </button>
-  )
-}
 
 /**
  * Collapsible section accordion.
@@ -72,23 +55,14 @@ export default function AvatarCustomizer({ landscape = false }) {
   const isShortViewport = viewportHeight < 600
 
   // Determine if sections should be collapsed by default
-  // Landscape (< 600px height): collapse all accordions by default
   const forceCollapsed = isMobile && isShortViewport
 
   // ── Mobile Landscape: Right-aligned side panel ──────────────────────────
   if (landscape || (isMobile && isLandscape)) {
     return (
       <div
-        className="h-full flex flex-col"
-        style={{
-          width: '320px',
-          maxWidth: '320px',
-          background: 'rgba(10, 10, 26, 0.92)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          borderLeft: '1px solid rgba(255, 255, 255, 0.08)',
-          boxShadow: '-10px 0 30px -12px rgba(0,0,0,0.6)',
-        }}
+        className="h-full flex flex-col bg-[#0d0d2b] border-l border-white/[0.08]"
+        style={{ width: '320px', maxWidth: '320px' }}
       >
         {/* Scrollable content */}
         <div
@@ -110,16 +84,18 @@ export default function AvatarCustomizer({ landscape = false }) {
           <Section label="Form" forceCollapsed={forceCollapsed}>
             <div className="grid grid-cols-5 gap-1">
               {SHAPES.map((s) => (
-                <OptionButton
+                <Card
                   key={s.id}
+                  variant="interactive"
                   selected={avatar.shape === s.id}
+                  className="flex flex-col items-center gap-0.5 py-2 px-0.5 cursor-pointer"
                   onClick={() => setAvatar({ shape: s.id })}
-                  accent={avatar.auraColor}
-                  className="flex flex-col items-center gap-0.5 py-2 px-0.5"
+                  role="button"
+                  aria-pressed={avatar.shape === s.id}
                 >
                   <span className="text-base leading-none">{s.icon}</span>
-                  <span className="font-medium text-[10px] leading-tight">{s.label}</span>
-                </OptionButton>
+                  <span className="font-medium text-[10px] leading-tight text-slate-300">{s.label}</span>
+                </Card>
               ))}
             </div>
           </Section>
@@ -137,8 +113,7 @@ export default function AvatarCustomizer({ landscape = false }) {
                     aria-label={c.label}
                     aria-pressed={selected}
                     className={`tap-compact swatch w-7 h-7 rounded-full transition-all duration-200
-                                focus:outline-none focus:ring-2 focus:ring-offset-1
-                                focus:ring-offset-transparent focus:ring-white/50
+                                focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70
                                 ${selected
                                   ? 'scale-125 ring-2 ring-white shadow-lg'
                                   : 'ring-1 ring-white/20 hover:scale-110'}`}
@@ -159,18 +134,20 @@ export default function AvatarCustomizer({ landscape = false }) {
           <Section label="Presence effect" defaultOpen={false} forceCollapsed={forceCollapsed}>
             <div className="grid grid-cols-3 gap-2">
               {PARTICLE_EFFECTS.map((p) => (
-                <OptionButton
+                <Card
                   key={p.id}
+                  variant="interactive"
                   selected={avatar.particles === p.id}
+                  className="flex flex-col items-center gap-0.5 py-3 cursor-pointer"
                   onClick={() => setAvatar({ particles: p.id })}
-                  accent={avatar.auraColor}
-                  className="flex flex-col items-center gap-0.5 py-3"
+                  role="button"
+                  aria-pressed={avatar.particles === p.id}
                 >
-                  <span className="font-medium text-xs">{p.label}</span>
+                  <span className="font-medium text-xs text-slate-300">{p.label}</span>
                   <span className="text-[10px] text-slate-500 leading-tight text-center">
                     {p.hint}
                   </span>
-                </OptionButton>
+                </Card>
               ))}
             </div>
           </Section>
@@ -194,23 +171,22 @@ export default function AvatarCustomizer({ landscape = false }) {
         </div>
 
         {/* Sticky action buttons at bottom */}
-        <div className="flex-shrink-0 p-4 pt-2 border-t border-white/5">
-          <button
+        <div className="flex-shrink-0 p-4 pt-2 border-t border-white/[0.08]">
+          <Button
+            variant="primary"
+            fullWidth
             onClick={() => setPhase('checkin')}
-            className="w-full py-3 rounded-xl text-sm font-medium text-white
-                       border border-white/20
-                       hover:bg-white hover:text-[#050510]
-                       transition-all duration-300
-                       focus:outline-none focus:ring-2 focus:ring-violet-400"
           >
             Continue →
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
+            fullWidth
             onClick={() => setPhase('landing')}
-            className="tap-compact w-full mt-2 text-[11px] text-slate-600 hover:text-slate-400 transition-colors text-center"
+            className="mt-2"
           >
             ← Back
-          </button>
+          </Button>
         </div>
       </div>
     )
@@ -218,21 +194,10 @@ export default function AvatarCustomizer({ landscape = false }) {
 
   // ── Mobile Portrait: Bottom-anchored panel ──────────────────────────────
   if (isMobile) {
-    // Max height: 55dvh default, 45dvh if viewport height < 600px
-    const maxHeight = isShortViewport ? '45dvh' : '55dvh'
-
     return (
       <div
-        className="flex flex-col animate-slide-up"
-        style={{
-          maxHeight,
-          background: 'rgba(10, 10, 26, 0.92)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-          boxShadow: '0 -10px 30px -12px rgba(0,0,0,0.6)',
-          borderRadius: '16px 16px 0 0',
-        }}
+        className="flex-1 flex flex-col bg-[#0d0d2b] border-t border-white/[0.08] rounded-t-2xl animate-slide-up"
+        style={{ overflow: 'hidden' }}
       >
         {/* Scrollable options area with overscroll containment */}
         <div
@@ -250,21 +215,23 @@ export default function AvatarCustomizer({ landscape = false }) {
             </p>
           </header>
 
-          {/* Shape — 5-column, 40×40px tap area per button, 4px spacing (44px center-to-center) */}
+          {/* Shape — 5-column grid */}
           <Section label="Form" forceCollapsed={forceCollapsed}>
             <div className="grid grid-cols-5 gap-1">
               {SHAPES.map((s) => (
-                <OptionButton
+                <Card
                   key={s.id}
+                  variant="interactive"
                   selected={avatar.shape === s.id}
+                  className="tap-compact flex flex-col items-center gap-0.5 py-2 px-0.5 cursor-pointer"
                   onClick={() => setAvatar({ shape: s.id })}
-                  accent={avatar.auraColor}
-                  className="tap-compact flex flex-col items-center gap-0.5 py-2 px-0.5 rounded-xl"
+                  role="button"
+                  aria-pressed={avatar.shape === s.id}
                   style={{ minWidth: '40px', minHeight: '40px' }}
                 >
                   <span className="text-base leading-none">{s.icon}</span>
-                  <span className="font-medium text-[9px] leading-tight">{s.label}</span>
-                </OptionButton>
+                  <span className="font-medium text-[9px] leading-tight text-slate-300">{s.label}</span>
+                </Card>
               ))}
             </div>
           </Section>
@@ -282,8 +249,7 @@ export default function AvatarCustomizer({ landscape = false }) {
                     aria-label={c.label}
                     aria-pressed={selected}
                     className={`tap-compact swatch w-6 h-6 rounded-full transition-all duration-200
-                                focus:outline-none focus:ring-2 focus:ring-offset-1
-                                focus:ring-offset-transparent focus:ring-white/50
+                                focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70
                                 ${selected
                                   ? 'scale-125 ring-2 ring-white shadow-lg'
                                   : 'ring-1 ring-white/20 hover:scale-110'}`}
@@ -304,18 +270,20 @@ export default function AvatarCustomizer({ landscape = false }) {
           <Section label="Presence effect" defaultOpen={false} forceCollapsed={forceCollapsed}>
             <div className="grid grid-cols-3 gap-1.5">
               {PARTICLE_EFFECTS.map((p) => (
-                <OptionButton
+                <Card
                   key={p.id}
+                  variant="interactive"
                   selected={avatar.particles === p.id}
+                  className="flex flex-col items-center gap-0.5 py-2 cursor-pointer"
                   onClick={() => setAvatar({ particles: p.id })}
-                  accent={avatar.auraColor}
-                  className="flex flex-col items-center gap-0.5 py-2"
+                  role="button"
+                  aria-pressed={avatar.particles === p.id}
                 >
-                  <span className="font-medium text-[11px]">{p.label}</span>
+                  <span className="font-medium text-[11px] text-slate-300">{p.label}</span>
                   <span className="text-[9px] text-slate-500 leading-tight text-center">
                     {p.hint}
                   </span>
-                </OptionButton>
+                </Card>
               ))}
             </div>
           </Section>
@@ -339,29 +307,28 @@ export default function AvatarCustomizer({ landscape = false }) {
         </div>
 
         {/* Sticky "Continue" button at panel bottom */}
-        <div className="flex-shrink-0 px-3 py-2 border-t border-white/5">
-          <button
+        <div className="flex-shrink-0 px-3 py-2 border-t border-white/[0.08]">
+          <Button
+            variant="primary"
+            fullWidth
             onClick={() => setPhase('checkin')}
-            className="w-full py-2.5 rounded-xl text-sm font-medium text-white
-                       border border-white/20
-                       hover:bg-white hover:text-[#050510]
-                       transition-all duration-300
-                       focus:outline-none focus:ring-2 focus:ring-violet-400"
           >
             Continue →
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
+            fullWidth
             onClick={() => setPhase('landing')}
-            className="tap-compact w-full mt-1.5 text-[11px] text-slate-600 hover:text-slate-400 transition-colors text-center"
+            className="mt-1.5"
           >
             ← Back
-          </button>
+          </Button>
         </div>
       </div>
     )
   }
 
-  // ── Desktop: Original overlaid panel ────────────────────────────────────
+  // ── Desktop: Overlaid panel ─────────────────────────────────────────────
   return (
     <div className="absolute inset-0 z-20 flex items-end md:items-center md:justify-end
                     p-3 md:p-6 pointer-events-none overflow-y-auto">
@@ -370,15 +337,8 @@ export default function AvatarCustomizer({ landscape = false }) {
           interactive everywhere else */}
       <div
         className="pointer-events-auto w-full md:w-[340px] md:max-h-[90vh] rounded-2xl p-4 md:p-5
-                   flex flex-col gap-3 animate-slide-up"
-        style={{
-          background: 'rgba(10, 10, 26, 0.85)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          boxShadow: '0 20px 50px -12px rgba(0,0,0,0.8)',
-          maxHeight: 'calc(100vh - 24px)',
-        }}
+                   flex flex-col gap-3 animate-slide-up bg-[#0d0d2b] border border-white/[0.08]"
+        style={{ maxHeight: 'calc(100vh - 24px)' }}
       >
         {/* Header */}
         <header className="flex flex-col gap-0.5">
@@ -392,16 +352,18 @@ export default function AvatarCustomizer({ landscape = false }) {
         <Section label="Form">
           <div className="grid grid-cols-5 gap-1.5">
             {SHAPES.map((s) => (
-              <OptionButton
+              <Card
                 key={s.id}
+                variant="interactive"
                 selected={avatar.shape === s.id}
+                className="flex flex-col items-center gap-0.5 py-2.5 px-1 cursor-pointer"
                 onClick={() => setAvatar({ shape: s.id })}
-                accent={avatar.auraColor}
-                className="flex flex-col items-center gap-0.5 py-2.5 px-1"
+                role="button"
+                aria-pressed={avatar.shape === s.id}
               >
                 <span className="text-base leading-none">{s.icon}</span>
-                <span className="font-medium text-[10px] leading-tight">{s.label}</span>
-              </OptionButton>
+                <span className="font-medium text-[10px] leading-tight text-slate-300">{s.label}</span>
+              </Card>
             ))}
           </div>
         </Section>
@@ -419,8 +381,7 @@ export default function AvatarCustomizer({ landscape = false }) {
                   aria-label={c.label}
                   aria-pressed={selected}
                   className={`w-7 h-7 rounded-full transition-all duration-200
-                              focus:outline-none focus:ring-2 focus:ring-offset-1
-                              focus:ring-offset-transparent focus:ring-white/50
+                              focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70
                               ${selected
                                 ? 'scale-125 ring-2 ring-white shadow-lg'
                                 : 'ring-1 ring-white/20 hover:scale-110'}`}
@@ -441,18 +402,20 @@ export default function AvatarCustomizer({ landscape = false }) {
         <Section label="Presence effect" defaultOpen={false}>
           <div className="grid grid-cols-3 gap-2">
             {PARTICLE_EFFECTS.map((p) => (
-              <OptionButton
+              <Card
                 key={p.id}
+                variant="interactive"
                 selected={avatar.particles === p.id}
+                className="flex flex-col items-center gap-0.5 py-3 cursor-pointer"
                 onClick={() => setAvatar({ particles: p.id })}
-                accent={avatar.auraColor}
-                className="flex flex-col items-center gap-0.5 py-3"
+                role="button"
+                aria-pressed={avatar.particles === p.id}
               >
-                <span className="font-medium text-xs">{p.label}</span>
+                <span className="font-medium text-xs text-slate-300">{p.label}</span>
                 <span className="text-[10px] text-slate-500 leading-tight text-center">
                   {p.hint}
                 </span>
-              </OptionButton>
+              </Card>
             ))}
           </div>
         </Section>
@@ -475,23 +438,21 @@ export default function AvatarCustomizer({ landscape = false }) {
         </div>
 
         {/* ── Actions ───────────────────────────────────────────────────── */}
-        <button
+        <Button
+          variant="primary"
+          fullWidth
           onClick={() => setPhase('checkin')}
-          className="w-full py-3 rounded-xl text-sm font-medium text-white
-                     border border-white/20
-                     hover:bg-white hover:text-[#050510]
-                     transition-all duration-300
-                     focus:outline-none focus:ring-2 focus:ring-violet-400"
         >
           Continue →
-        </button>
+        </Button>
 
-        <button
+        <Button
+          variant="ghost"
+          fullWidth
           onClick={() => setPhase('landing')}
-          className="text-[11px] text-slate-600 hover:text-slate-400 transition-colors text-center"
         >
           ← Back
-        </button>
+        </Button>
       </div>
     </div>
   )

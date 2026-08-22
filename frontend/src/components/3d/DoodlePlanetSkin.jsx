@@ -98,7 +98,7 @@ export default function DoodlePlanetSkin({ planetSize, onClick, onPointerOver, o
       castShadow
       receiveShadow
     >
-      <sphereGeometry args={[planetSize, 48, 32]} />
+      <sphereGeometry args={[planetSize, 64, 48]} />
       <meshStandardMaterial
         map={texture}
         color="#ffffff"

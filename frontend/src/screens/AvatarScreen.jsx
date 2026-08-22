@@ -10,15 +10,17 @@ import { useOrientation } from '../lib/viewport'
 /**
  * AvatarScreen — full-screen WebGL stage with the customizer overlaid.
  *
- * The avatar renders live behind the glass panel, so every option change is
+ * The avatar renders live behind the panel, so every option change is
  * immediately visible rather than being previewed in a small box.
  *
  * Mobile (< 768px):
- *   - Portrait: 3D canvas occupies the top portion (min 35% vh), customizer
- *     panel anchored at bottom (max 55dvh). Panel scrolls independently.
- *   - Landscape: Side panel layout — canvas fills left, panel on right (max 320px).
+ *   - Portrait: 3D canvas occupies the top 45dvh, customizer panel fills
+ *     remaining bottom space. Panel scrolls independently with overscroll-contain.
+ *   - Landscape: Side-by-side — canvas fills left, panel on right (max 320px).
  *
- * Desktop (≥ 768px): Unchanged — full-screen canvas with overlaid panel.
+ * Desktop (>= 768px): Full-screen canvas with overlaid panel (bg-[#0d0d2b] solid).
+ *
+ * No glass-morphism anywhere. Canvas background: #050510.
  */
 export default function AvatarScreen() {
   const isMobile = useIsSmallScreen()
@@ -67,12 +69,12 @@ export default function AvatarScreen() {
     )
   }
 
-  // Mobile portrait: stacked layout (canvas top, panel bottom)
+  // Mobile portrait: stacked layout (canvas top 45dvh, panel bottom fills rest)
   if (isMobile) {
     return (
       <div className="relative w-full h-full overflow-hidden flex flex-col">
-        {/* 3D Canvas — min 35% viewport height, touch orbit stays interactive */}
-        <div className="relative flex-shrink-0" style={{ minHeight: '35dvh', height: '45dvh' }}>
+        {/* 3D Canvas — 45dvh fixed height */}
+        <div className="relative flex-shrink-0" style={{ height: '45dvh' }}>
           <Canvas
             camera={{ position: [0, 0, 5], fov: 50 }}
             dpr={[1, 1.5]}
@@ -104,7 +106,7 @@ export default function AvatarScreen() {
           </Canvas>
         </div>
 
-        {/* Bottom-anchored customizer panel */}
+        {/* Bottom-anchored customizer panel — fills remaining space, scrollable */}
         <AvatarCustomizer />
       </div>
     )
@@ -146,7 +148,7 @@ export default function AvatarScreen() {
         </Suspense>
       </Canvas>
 
-      {/* Glassmorphism controls on top of the canvas */}
+      {/* Solid-background controls overlaid on top of the canvas */}
       <AvatarCustomizer />
     </div>
   )

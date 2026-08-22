@@ -132,6 +132,7 @@ export default function ReactionBar({ post, accentColor = '#8b5cf6' }) {
         open={showAuthPrompt}
         onClose={() => setShowAuthPrompt(false)}
         planetContext={selectedPlanet?.label || post.planet_id}
+        actionLabel="Sign in to react"
       />
     </div>
   )

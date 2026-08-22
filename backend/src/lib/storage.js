@@ -174,6 +174,20 @@ export async function saveLexicon(next) {
     toxic: payload.toxic,
     allow: payload.allow,
   }
+
+  // Trigger Aho-Corasick automata rebuild so new admin terms take effect
+  // immediately. Uses dynamic import to avoid circular dependency
+  // (engine.js imports getLexiconSync from this module).
+  try {
+    const { rebuildAutomata } = await import('../moderation/engine.js')
+    const success = rebuildAutomata()
+    if (!success) {
+      console.warn('[Storage] Automata rebuild failed after lexicon save — previous automata preserved.')
+    }
+  } catch (err) {
+    console.error('[Storage] Failed to trigger automata rebuild:', err.message)
+  }
+
   return payload
 }
 

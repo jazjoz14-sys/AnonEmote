@@ -28,15 +28,24 @@ export default function OnboardingOverlay() {
   /**
    * Highlight logic: find the target DOM element and position tooltip near it.
    * If element not found or selector is null, center the tooltip.
+   *
+   * On mobile (< 768px), the tooltip is always pinned to the bottom of the
+   * screen to prevent overflow — the highlight glow still shows the referenced
+   * element, but the card itself stays safe.
    */
   useEffect(() => {
     if (!active || !currentStep) return
 
     const { highlightSelector } = currentStep
+    const isMobile = window.innerWidth < 768
 
     if (!highlightSelector) {
-      // No element to highlight — center tooltip
-      setTooltipPos({ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' })
+      // No element to highlight — position tooltip centrally
+      if (isMobile) {
+        setTooltipPos({ top: 'auto', bottom: '80px', left: '1rem', right: '1rem', transform: 'none' })
+      } else {
+        setTooltipPos({ top: '50%', left: '50%', right: undefined, bottom: undefined, transform: 'translate(-50%, -50%)' })
+      }
       setHighlightRect(null)
       return
     }
@@ -46,28 +55,45 @@ export default function OnboardingOverlay() {
     if (!el) {
       // Element not found — center tooltip, log warning
       console.warn(`[OnboardingOverlay] Element not found for selector: ${highlightSelector}`)
-      setTooltipPos({ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' })
+      if (isMobile) {
+        setTooltipPos({ top: 'auto', bottom: '80px', left: '1rem', right: '1rem', transform: 'none' })
+      } else {
+        setTooltipPos({ top: '50%', left: '50%', right: undefined, bottom: undefined, transform: 'translate(-50%, -50%)' })
+      }
       setHighlightRect(null)
       return
     }
 
-    // Get element bounding rect and position tooltip below it
+    // Get element bounding rect and position tooltip relative to it
     const rect = el.getBoundingClientRect()
     setHighlightRect(rect)
 
-    // Position tooltip below the highlighted element, centered horizontally
-    const tooltipTop = rect.bottom + 16
-    const tooltipLeft = rect.left + rect.width / 2
+    if (isMobile) {
+      // On mobile: always pin tooltip to the bottom with left+right for auto-width
+      setTooltipPos({
+        top: 'auto',
+        bottom: '80px',
+        left: '1rem',
+        right: '1rem',
+        transform: 'none',
+      })
+    } else {
+      // Desktop: position below the highlighted element, centered horizontally
+      const tooltipTop = rect.bottom + 16
+      const tooltipLeft = rect.left + rect.width / 2
 
-    // Clamp within viewport
-    const clampedTop = Math.min(tooltipTop, window.innerHeight - 220)
-    const clampedLeft = Math.max(180, Math.min(tooltipLeft, window.innerWidth - 180))
+      // Clamp within viewport
+      const clampedTop = Math.min(tooltipTop, window.innerHeight - 220)
+      const clampedLeft = Math.max(180, Math.min(tooltipLeft, window.innerWidth - 180))
 
-    setTooltipPos({
-      top: `${clampedTop}px`,
-      left: `${clampedLeft}px`,
-      transform: 'translateX(-50%)',
-    })
+      setTooltipPos({
+        top: `${clampedTop}px`,
+        left: `${clampedLeft}px`,
+        right: undefined,
+        bottom: undefined,
+        transform: 'translateX(-50%)',
+      })
+    }
   }, [active, step, currentStep])
 
   /**
@@ -119,7 +145,7 @@ export default function OnboardingOverlay() {
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-[100]"
+      className="fixed inset-0 z-[100] overflow-hidden"
       role="dialog"
       aria-modal="true"
       aria-label="Onboarding tutorial"
@@ -140,11 +166,12 @@ export default function OnboardingOverlay() {
         />
       )}
 
-      {/* Tooltip card */}
+      {/* Tooltip card — responsive: fills mobile with margins, fixed 320px on desktop */}
       <div
-        className="absolute w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-violet-500/30
+        className="absolute rounded-xl border border-violet-500/30
                    bg-slate-900/95 backdrop-blur-md shadow-2xl shadow-violet-900/20
-                   p-5 flex flex-col gap-4 animate-pop-in"
+                   p-5 flex flex-col gap-4 animate-pop-in
+                   sm:w-80"
         style={tooltipPos}
       >
         {/* Step title */}

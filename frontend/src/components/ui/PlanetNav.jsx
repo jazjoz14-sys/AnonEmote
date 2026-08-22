@@ -38,6 +38,12 @@ function useIsNarrow() {
 /**
  * PlanetNav — responsive planet navigation bar.
  *
+ * Design tokens applied:
+ *   - 44px minimum touch targets on mobile (min-w-[44px] min-h-[44px])
+ *   - focus-visible: 2px white/70 outline offset by 2px on all planet buttons
+ *   - border-white/30 for active border accent
+ *   - Monochrome text + planet color accent on active only
+ *
  * Mobile portrait: horizontal scrollable row at bottom (≤ 44px height)
  * Narrow (<380px): abbreviated labels
  * Landscape: vertical column on left edge with emoji-only buttons
@@ -102,6 +108,7 @@ export default function PlanetNav({ showPulseHint = false, onPlanetClick }) {
               {...(p.id === 'doodle' ? { 'data-onboarding': 'doodle-planet' } : {})}
               className={`flex items-center justify-center shrink-0
                          transition-all duration-200
+                         focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70
                          ${isActive ? 'scale-110' : 'opacity-70 hover:opacity-100'}`}
               style={{
                 width: '44px',
@@ -152,6 +159,7 @@ export default function PlanetNav({ showPulseHint = false, onPlanetClick }) {
                 className={`tap-compact shrink-0 snap-start px-3 py-1.5 relative
                            tracking-[0.03em] uppercase font-medium
                            transition-all duration-200
+                           focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70
                            ${isActive
                              ? 'text-white'
                              : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'
@@ -159,7 +167,7 @@ export default function PlanetNav({ showPulseHint = false, onPlanetClick }) {
                 style={{
                   fontSize: '10px',
                   minWidth: '44px',
-                  minHeight: '34px',
+                  minHeight: '44px',
                   lineHeight: '1',
                   display: 'flex',
                   alignItems: 'center',
@@ -174,12 +182,6 @@ export default function PlanetNav({ showPulseHint = false, onPlanetClick }) {
                 aria-label={`Focus on ${p.label} planet`}
                 aria-current={isActive ? 'true' : undefined}
               >
-                {/* Invisible tap target extender to reach 44×44px */}
-                <span
-                  className="absolute inset-0 -top-[5px] -bottom-[5px]"
-                  style={{ minHeight: '44px', minWidth: '44px' }}
-                  aria-hidden="true"
-                />
                 {label}
               </button>
             )
@@ -207,6 +209,7 @@ export default function PlanetNav({ showPulseHint = false, onPlanetClick }) {
               className={`px-4 py-2 rounded-sm text-xs tracking-[0.05em] uppercase
                          font-medium border transition-all duration-200
                          active:scale-95
+                         focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70
                          ${isActive
                            ? 'text-white border-white/30 bg-white/[0.08]'
                            : 'text-slate-300 border-white/[0.12] hover:text-white hover:border-white/30 hover:bg-white/[0.05]'

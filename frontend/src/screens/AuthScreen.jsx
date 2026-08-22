@@ -1,16 +1,23 @@
-import React, { useState } from 'react'
+﻿import React, { useState } from 'react'
 import useAppStore from '../store/useAppStore'
 import { supabase } from '../lib/supabase'
+import { useIsSmallScreen } from '../lib/device'
 import TermsModal from '../components/modals/TermsModal'
+import Input from '../components/ui/Input'
+import Button from '../components/ui/Button'
 
 /**
- * AuthScreen — login/register gate with password reset.
+ * AuthScreen â€” login/register gate with password reset.
  *
  * Users can either sign up / sign in to get full posting access,
  * or continue as a guest (view-only mode in the star system).
+ *
+ * Uses the design system primitives (Input, Button) for consistency
+ * with the cosmic monochrome + violet accent language.
  */
 export default function AuthScreen() {
   const { setPhase } = useAppStore()
+  const isSmall = useIsSmallScreen()
 
   const [mode, setMode] = useState('login') // 'login' | 'register' | 'reset'
   const [email, setEmail] = useState('')
@@ -91,6 +98,14 @@ export default function AuthScreen() {
       const msg = err.message || 'Something went wrong.'
       if (/email.*not.*confirmed/i.test(msg)) {
         setError('Please check your email to confirm your account before signing in.')
+      } else if (/rate.*limit.*exceeded/i.test(msg) || /too many requests/i.test(msg) || /email.*limit/i.test(msg)) {
+        setError('Too many sign-up attempts. Please wait a few minutes and try again.')
+      } else if (/user.*already.*registered/i.test(msg) || /already.*been.*registered/i.test(msg)) {
+        setError('This email is already registered. Try signing in instead.')
+      } else if (/invalid.*login/i.test(msg)) {
+        setError('Invalid email or password. Please try again.')
+      } else if (/password.*too.*short/i.test(msg) || /at least/i.test(msg)) {
+        setError('Password must be at least 6 characters.')
       } else {
         setError(msg)
       }
@@ -100,7 +115,7 @@ export default function AuthScreen() {
   }
 
   return (
-    <div className="w-full h-full flex items-center justify-center px-6"
+    <div className="w-full h-full flex items-center justify-center px-6 overflow-x-hidden"
          style={{ background: '#050510' }}>
       <div className="w-full max-w-sm flex flex-col gap-6">
         {/* Logo */}
@@ -113,114 +128,124 @@ export default function AuthScreen() {
             {mode === 'login'
               ? 'Sign in to broadcast, react, and reply.'
               : mode === 'register'
-                ? 'Your email is private — other users only see your avatar.'
+                ? 'Your email is private â€” other users only see your avatar.'
                 : 'Enter your email and we\'ll send a reset link.'}
           </p>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            disabled={loading}
-            className="w-full px-4 py-3 rounded-sm text-sm text-white
-                       bg-white/[0.03] border border-white/[0.1]
-                       placeholder-slate-600 focus:outline-none focus:border-white/25
-                       disabled:opacity-40 disabled:cursor-not-allowed
-                       transition-colors"
-            autoComplete="email"
-          />
-          {mode !== 'reset' && (
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
+        {/*
+         * Form container with min-height transition to prevent height jumps
+         * when toggling between login/register/reset modes.
+         * Register mode is tallest (3 inputs + checkbox), so min-height accommodates that.
+         */}
+        <div
+          className="transition-[min-height] duration-200 ease-out"
+          style={{ minHeight: mode === 'register' ? '340px' : mode === 'reset' ? '140px' : '220px' }}
+        >
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <Input
+              id="auth-screen-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email"
               disabled={loading}
-              className="w-full px-4 py-3 rounded-sm text-sm text-white
-                         bg-white/[0.03] border border-white/[0.1]
-                         placeholder-slate-600 focus:outline-none focus:border-white/25
-                         disabled:opacity-40 disabled:cursor-not-allowed
-                         transition-colors"
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+              autoComplete="email"
+              aria-label="Email address"
             />
-          )}
-          {mode === 'register' && (
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm password"
-              disabled={loading}
-              className="w-full px-4 py-3 rounded-sm text-sm text-white
-                         bg-white/[0.03] border border-white/[0.1]
-                         placeholder-slate-600 focus:outline-none focus:border-white/25
-                         disabled:opacity-40 disabled:cursor-not-allowed
-                         transition-colors"
-              autoComplete="new-password"
-            />
-          )}
 
-          {/* Terms & Conditions checkbox — register mode only */}
-          {mode === 'register' && (
-            <label className="flex items-start gap-3 py-1 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={termsAccepted}
-                onChange={(e) => {
-                  setTermsAccepted(e.target.checked)
-                  if (e.target.checked) setTermsError('')
-                }}
-                className="mt-0.5 w-4 h-4 shrink-0 accent-violet-500 rounded
-                           bg-white/[0.03] border border-white/[0.2]"
+            {mode !== 'reset' && (
+              <Input
+                id="auth-screen-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                disabled={loading}
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                aria-label="Password"
               />
-              <span className="text-xs text-slate-400 leading-relaxed">
-                I agree to the{' '}
-                <button
-                  type="button"
-                  onClick={(e) => { e.preventDefault(); setTermsModalType('terms') }}
-                  className="text-violet-400 hover:text-violet-300 underline transition-colors"
-                >
-                  Terms &amp; Conditions
-                </button>
-                {' '}and{' '}
-                <button
-                  type="button"
-                  onClick={(e) => { e.preventDefault(); setTermsModalType('privacy') }}
-                  className="text-violet-400 hover:text-violet-300 underline transition-colors"
-                >
-                  Privacy Policy
-                </button>
-              </span>
-            </label>
-          )}
+            )}
 
-          {termsError && (
-            <p className="text-xs text-red-400 leading-relaxed">{termsError}</p>
-          )}
+            {mode === 'register' && (
+              <Input
+                id="auth-screen-confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm password"
+                disabled={loading}
+                autoComplete="new-password"
+                aria-label="Confirm password"
+              />
+            )}
 
-          {error && (
-            <p className="text-xs text-red-400 leading-relaxed">{error}</p>
-          )}
-          {success && (
-            <p className="text-xs text-emerald-400 leading-relaxed">{success}</p>
-          )}
+            {/* Terms & Conditions checkbox â€” register mode only */}
+            {mode === 'register' && (
+              <label
+                className={[
+                  'flex items-start gap-3 py-1 cursor-pointer select-none',
+                  isSmall ? 'min-h-[44px]' : '',
+                ].filter(Boolean).join(' ')}
+              >
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => {
+                    setTermsAccepted(e.target.checked)
+                    if (e.target.checked) setTermsError('')
+                  }}
+                  className={[
+                    'mt-0.5 w-4 h-4 shrink-0 accent-violet-500 rounded',
+                    'bg-white/[0.03] border border-white/[0.2]',
+                    isSmall ? 'min-w-[44px] min-h-[44px] p-3 -m-3' : '',
+                  ].filter(Boolean).join(' ')}
+                />
+                <span className="text-xs text-slate-400 leading-relaxed">
+                  I agree to the{' '}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); setTermsModalType('terms') }}
+                    className="text-violet-400 hover:text-violet-300 underline transition-colors"
+                  >
+                    Terms &amp; Conditions
+                  </button>
+                  {' '}and{' '}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); setTermsModalType('privacy') }}
+                    className="text-violet-400 hover:text-violet-300 underline transition-colors"
+                  >
+                    Privacy Policy
+                  </button>
+                </span>
+              </label>
+            )}
 
-          <button
-            type="submit"
-            disabled={loading || (mode === 'register' && !termsAccepted)}
-            className="w-full py-3 rounded-sm text-xs tracking-[0.15em] uppercase font-medium
-                       text-white border border-white/30
-                       hover:bg-white hover:text-[#050510]
-                       disabled:opacity-40 disabled:cursor-not-allowed
-                       transition-all duration-200 mt-2"
-          >
-            {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : mode === 'register' ? 'Create Account' : 'Send Reset Link'}
-          </button>
-        </form>
+            {termsError && (
+              <p className="text-xs text-red-400 leading-relaxed">{termsError}</p>
+            )}
+
+            {error && (
+              <p className="text-xs text-red-400 leading-relaxed">{error}</p>
+            )}
+
+            {success && (
+              <p className="text-xs text-emerald-400 leading-relaxed">{success}</p>
+            )}
+
+            <Button
+              type="submit"
+              variant="primary"
+              fullWidth
+              loading={loading}
+              disabled={mode === 'register' && !termsAccepted}
+              className="mt-2"
+            >
+              {mode === 'login' ? 'Sign In' : mode === 'register' ? 'Create Account' : 'Send Reset Link'}
+            </Button>
+          </form>
+        </div>
 
         {/* Toggle mode */}
         <div className="flex flex-col items-center gap-3">
@@ -240,16 +265,14 @@ export default function AuthScreen() {
             </button>
           )}
 
-          {/* Guest access — make it clear and visible */}
-          <button
+          {/* Guest access â€” secondary button variant */}
+          <Button
+            variant="secondary"
+            fullWidth
             onClick={() => setPhase('avatar')}
-            className="w-full py-3 rounded-sm text-xs tracking-[0.15em] uppercase font-medium
-                       text-slate-300 border border-white/[0.12]
-                       hover:text-white hover:border-white/25
-                       transition-all duration-200"
           >
             Continue as Guest (View Only)
-          </button>
+          </Button>
         </div>
 
         {/* Privacy note */}

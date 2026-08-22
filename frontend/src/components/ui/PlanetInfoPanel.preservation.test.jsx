@@ -40,14 +40,14 @@ vi.mock('../../lib/api', () => ({
   apiFetch: vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({}) }),
 }))
 
-// Mock draggable hook
-vi.mock('../../hooks/useDraggable', () => ({
-  default: () => ({
-    position: { x: 100, y: 100 },
-    isDragging: false,
-    dragProps: { style: {} },
-    handleProps: {},
-  }),
+// Mock ModalShell to avoid deep dependency tree in unit tests
+vi.mock('./ModalShell', () => ({
+  default: ({ open, children }) => open ? React.createElement('div', { 'data-testid': 'modal-shell' }, children) : null,
+}))
+
+// Mock ScrollFade to pass children through
+vi.mock('./ScrollFade', () => ({
+  default: ({ children }) => React.createElement('div', { 'data-testid': 'scroll-fade' }, children),
 }))
 
 const mockPosts = [
@@ -90,9 +90,14 @@ describe('Preservation: Post Display in PlanetInfoPanel', () => {
       sessionId: 'session-123',
       mergeReactions: vi.fn(),
       isAuthenticated: true,
+      isOffline: false,
+      postModalOpen: false,
+      setPendingPlanetId: vi.fn(),
       openSheets: [],
       registerSheet: vi.fn(),
       unregisterSheet: vi.fn(),
+      pushModal: vi.fn(),
+      popModal: vi.fn(),
     }
   })
 

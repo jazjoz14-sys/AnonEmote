@@ -5,6 +5,8 @@ import useAppStore from '../store/useAppStore'
 import { CLAY, makeClayBlob } from '../components/3d/clay'
 import { PLANETS } from '../data/planets'
 import { useIsSmallScreen } from '../lib/device'
+import Button from '../components/ui/Button'
+import Card from '../components/ui/Card'
 
 /**
  * LandingScreen — OkayDev-inspired atmospheric landing.
@@ -262,10 +264,7 @@ function MobileBackground() {
 function MobilePlanetCard({ planet }) {
   const details = PLANET_DETAILS[planet.id]
   return (
-    <div
-      className="w-full rounded-lg border border-white/[0.08] p-4 flex flex-col gap-3"
-      style={{ background: 'rgba(255,255,255,0.02)' }}
-    >
+    <Card variant="interactive" className="w-full p-4 flex flex-col gap-3">
       {/* Icon + name row */}
       <div className="flex items-center gap-3">
         <img
@@ -294,7 +293,7 @@ function MobilePlanetCard({ planet }) {
           ))}
         </div>
       )}
-    </div>
+    </Card>
   )
 }
 
@@ -453,11 +452,11 @@ export default function LandingScreen() {
 
   return (
     <div
-      className="w-full h-full overflow-y-auto scroll-smooth"
+      className="w-full h-full overflow-y-auto overflow-x-hidden scroll-smooth animate-fade-in"
       style={{
         background: '#050510',
-        // Prevent pull-to-refresh / rubber-band on mobile scroll container
-        overscrollBehaviorY: isSmallScreen ? 'none' : undefined,
+        // Prevent pull-to-refresh / rubber-band on scroll container (Req 20.4)
+        overscrollBehaviorY: 'none',
       }}
     >
       <Particles />
@@ -507,20 +506,14 @@ export default function LandingScreen() {
           Just a 3D emotional space moderated by AI for your safety.
         </p>
 
-        {/* CTA — outline button, min 48px height and 200px width on mobile */}
-        <button
+        {/* CTA — outline button using Button primitive */}
+        <Button
+          variant="primary"
           onClick={() => setPhase('auth')}
-          className="mt-10 px-8 py-3.5 text-xs tracking-[0.2em] uppercase font-medium
-                     text-white border border-white/30 rounded-sm
-                     hover:bg-white hover:text-[#050510]
-                     active:scale-[0.97] transition-all duration-300"
-          style={{
-            minHeight: isSmallScreen ? '48px' : undefined,
-            minWidth: isSmallScreen ? '200px' : undefined,
-          }}
+          className="mt-10 px-8 py-3.5"
         >
           Enter Space
-        </button>
+        </Button>
 
         {/* Scroll line — only show on desktop */}
         {!isSmallScreen && (
@@ -561,19 +554,13 @@ export default function LandingScreen() {
                           ${isSmallScreen ? 'text-2xl' : 'text-3xl sm:text-4xl md:text-5xl'}`}>
             Ready to speak<br />without fear?
           </h2>
-          <button
+          <Button
+            variant="primary"
             onClick={() => setPhase('auth')}
-            className="mt-10 px-10 py-4 text-xs tracking-[0.2em] uppercase font-medium
-                       text-white border border-white/30 rounded-sm
-                       hover:bg-white hover:text-[#050510]
-                       active:scale-[0.97] transition-all duration-300"
-            style={{
-              minHeight: isSmallScreen ? '48px' : undefined,
-              minWidth: isSmallScreen ? '200px' : undefined,
-            }}
+            className="mt-10 px-10 py-4"
           >
             Join Free Today
-          </button>
+          </Button>
         </div>
       </section>
 

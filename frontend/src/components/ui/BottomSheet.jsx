@@ -54,10 +54,10 @@ export default function BottomSheet({ open, onClose, zIndex = 30, maxHeight, lan
 
   return (
     <>
-      {/* Backdrop overlay — click to close */}
+      {/* Backdrop overlay — click to close, touch-action:none prevents scroll-through */}
       <div
         className="fixed inset-0 bg-black/40"
-        style={{ zIndex: zIndex - 1 }}
+        style={{ zIndex: zIndex - 1, touchAction: 'none' }}
         onClick={onClose}
         aria-hidden="true"
       />

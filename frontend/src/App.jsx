@@ -98,6 +98,15 @@ export default function App() {
       {/* Global toast notifications — z-[200] renders above all other content */}
       <Toast />
 
+      {/* Visually hidden live region for screen reader announcements
+          (e.g., post added, state transitions) that aren't covered by Toast */}
+      <div
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+        id="announce-region"
+      />
+
       {/* Auth prompt for guest write-gating — shown when guest selects a planet */}
       <AuthPromptModal
         open={authPromptOpen}

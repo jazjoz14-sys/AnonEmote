@@ -413,6 +413,7 @@ adminRouter.put('/lexicon', requireAdmin, async (req, res) => {
 /**
  * POST /api/admin/lexicon/test  { text }
  * Dry-run the filter so rules can be validated before they affect users.
+ * Returns full DryRunResult: verdict, matchedTerm, lexiconSource, layer, normalizedText, scores?
  */
 adminRouter.post('/lexicon/test', requireAdmin, async (req, res) => {
   const { text } = req.body || {}
@@ -420,8 +421,8 @@ adminRouter.post('/lexicon/test', requireAdmin, async (req, res) => {
     return res.status(400).json({ error: 'text is required.' })
   }
 
-  const { moderate } = await import('../moderation/engine.js')
-  const result = await moderate(text)
+  const { moderateDryRun } = await import('../moderation/engine.js')
+  const result = await moderateDryRun(text)
   res.json(result)
 })
 

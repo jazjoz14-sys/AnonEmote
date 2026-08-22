@@ -279,6 +279,46 @@ const useAppStore = create((set, get) => ({
   // ── Pending metadata writes for retry ─────────────────────────────────────
   pendingMetadataWrites: [],
 
+  // ── Reduced Motion Preference ────────────────────────────────────────────
+  // Reactive: reads matchMedia at init and listens for changes (user toggling
+  // their OS accessibility preference in real time).
+  prefersReducedMotion: false,
+  initReducedMotion: () => {
+    const mql = window.matchMedia('(prefers-reduced-motion: reduce)')
+    set({ prefersReducedMotion: mql.matches })
+    mql.addEventListener('change', (e) => set({ prefersReducedMotion: e.matches }))
+  },
+
+  // ── Modal Stack (focus restoration) ─────────────────────────────────────
+  // Tracks opened modals so focus can be returned to the trigger element
+  // when the modal closes. Each entry: { id: string, trigger: HTMLElement }
+  modalStack: [],
+
+  /**
+   * Push a modal onto the stack, recording the currently-focused element
+   * so we can restore focus when the modal pops.
+   * @param {string} id - Unique modal identifier (e.g. 'postModal', 'crisisModal')
+   */
+  pushModal: (id) => set((s) => ({
+    modalStack: [...s.modalStack, { id, trigger: document.activeElement }]
+  })),
+
+  /**
+   * Pop the top modal off the stack and restore focus to its trigger element.
+   * Falls back to document.body if the trigger is no longer in the DOM.
+   */
+  popModal: () => set((s) => {
+    const stack = [...s.modalStack]
+    const popped = stack.pop()
+    // Restore focus to the element that opened the modal
+    if (popped?.trigger && document.contains(popped.trigger)) {
+      popped.trigger.focus()
+    } else {
+      document.body.focus()
+    }
+    return { modalStack: stack }
+  }),
+
   // ── Session Persistence ───────────────────────────────────────────────────
   // Reads localStorage on login, writes on state changes, clears on sign-out.
 

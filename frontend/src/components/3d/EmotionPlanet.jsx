@@ -242,30 +242,6 @@ export default function EmotionPlanet({ planet }) {
           </group>
         ) : (
           <group ref={meshRef}>
-            {/* Smooth sphere base for doodle (fallback/loading) */}
-            <mesh
-              onClick={handleClick}
-              onPointerOver={() => {
-                if (modalOpen) return
-                setHovered(true)
-                document.body.style.cursor = 'pointer'
-              }}
-              onPointerOut={() => {
-                setHovered(false)
-                document.body.style.cursor = 'default'
-              }}
-              castShadow
-              receiveShadow
-            >
-              <sphereGeometry args={[planet.size, 48, 32]} />
-              <meshStandardMaterial
-                color={planet.color}
-                emissive={planet.color}
-                emissiveIntensity={isSelected ? 0.34 : (hovered ? 0.28 : 0.22)}
-                roughness={CLAY.roughness}
-                metalness={0}
-              />
-            </mesh>
             <DoodlePlanetSkin
               planetSize={planet.size}
               onClick={handleClick}

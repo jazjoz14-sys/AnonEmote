@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import useAppStore from '../../store/useAppStore'
-import useDraggable from '../../hooks/useDraggable'
 import { apiFetch } from '../../lib/api'
-import { useIsSmallScreen, useViewportSize } from '../../lib/device'
-import { useOrientation } from '../../lib/viewport'
-import BottomSheet from '../ui/BottomSheet'
+import { useIsSmallScreen } from '../../lib/device'
+import ModalShell from '../ui/ModalShell'
+import Button from '../ui/Button'
+import Textarea from '../ui/Textarea'
+import Banner from '../ui/Banner'
 import ConfirmDialog from '../ui/ConfirmDialog'
+import { Z } from '../../design/tokens'
 
 const MAX_CHARS = 280
 
@@ -64,12 +66,10 @@ function RocketAnimation({ phase }) {
 /**
  * PostModal — composer panel for broadcasting to a planet.
  *
- * Mobile (< 768px): renders as a BottomSheet (bottom-anchored, 55dvh max,
- * keyboard-aware repositioning via visualViewport API).
- *
- * Desktop (≥ 768px): draggable floating panel (unchanged from original).
- *
- * Landscape mobile: centered card (420px max width, 85dvh max height).
+ * Uses ModalShell for unified responsive layout:
+ * - Mobile portrait: BottomSheet (55dvh max)
+ * - Landscape mobile: centered card (480px max-width, 90dvh max-height)
+ * - Desktop: draggable floating panel (480px width)
  *
  * Submits to POST /api/moderate, which moderates AND inserts in one call.
  *   403 → crisis modal
@@ -78,11 +78,9 @@ function RocketAnimation({ phase }) {
  */
 export default function PostModal() {
   const isSmallScreen = useIsSmallScreen()
-  const { isLandscape } = useOrientation()
-  const { width: viewportWidth } = useViewportSize()
-  const panelWidth = isSmallScreen ? Math.min(440, viewportWidth - 16) : 480
 
   const {
+    postModalOpen,
     selectedPlanet,
     setPostModalOpen,
     openCrisis,
@@ -98,11 +96,6 @@ export default function PostModal() {
   const nuanceMatchesPlanet = checkIn?.feeling === selectedPlanet?.id
   const tailoredPrompt = nuanceMatchesPlanet ? checkIn.prompt : null
 
-  const { position, isDragging, dragProps, handleProps } = useDraggable({
-    width: panelWidth,
-    height: 440,
-  })
-
   // Seed from a preserved crisis draft, so choosing "Keep writing" returns the
   // user to exactly what they had typed.
   const [text, setText] = useState(() => crisis?.draft || '')
@@ -111,41 +104,17 @@ export default function PostModal() {
   const [rocketPhase, setRocketPhase] = useState(null) // null | 'rumble' | 'launch' | 'fail'
   const [showConfirm, setShowConfirm] = useState(false)
 
-  // Auto-grow textarea state
-  const [textareaRows, setTextareaRows] = useState(3)
+  // Textarea ref for auto-grow and focus
   const textareaRef = useRef(null)
 
   // Keyboard offset for mobile (visualViewport handling)
   const [keyboardOffset, setKeyboardOffset] = useState(0)
-  const sheetRef = useRef(null)
 
   const remaining = MAX_CHARS - text.length
 
-  // ─── Auto-grow textarea logic ───────────────────────────────────────────
-  const handleTextareaAutoGrow = useCallback(() => {
-    const textarea = textareaRef.current
-    if (!textarea || !isSmallScreen) return
-
-    // Temporarily reset to minimum to get accurate scrollHeight
-    textarea.style.height = 'auto'
-    const scrollHeight = textarea.scrollHeight
-    const lineHeight = parseInt(getComputedStyle(textarea).lineHeight) || 20
-    const currentVisibleHeight = lineHeight * textareaRows
-
-    if (scrollHeight > currentVisibleHeight) {
-      // Grow by 1 row, capped at max 25dvh equivalent
-      const maxHeight = window.innerHeight * 0.25
-      const newRows = Math.min(textareaRows + 1, Math.floor(maxHeight / lineHeight))
-      setTextareaRows(newRows)
-    }
-
-    // Restore proper height
-    textarea.style.height = ''
-  }, [isSmallScreen, textareaRows])
-
   // ─── visualViewport keyboard handling ───────────────────────────────────
   useEffect(() => {
-    if (!isSmallScreen) return
+    if (!isSmallScreen || !postModalOpen) return
 
     const vv = window.visualViewport
     if (!vv) return // Fallback: stay fixed at bottom
@@ -158,7 +127,7 @@ export default function PostModal() {
 
     vv.addEventListener('resize', handleResize)
     return () => vv.removeEventListener('resize', handleResize)
-  }, [isSmallScreen])
+  }, [isSmallScreen, postModalOpen])
 
   const handleSubmit = async () => {
     if (!text.trim() || status === 'checking') return
@@ -178,7 +147,7 @@ export default function PostModal() {
 
       const data = await res.json()
 
-      // Crisis detected
+      // Crisis detected — HTTP 403
       if (res.status === 403) {
         setRocketPhase('fail')
         setTimeout(() => {
@@ -190,6 +159,7 @@ export default function PostModal() {
         return
       }
 
+      // Blocked content — HTTP 406
       if (res.status === 406) {
         setRocketPhase('fail')
         setTimeout(() => {
@@ -212,7 +182,6 @@ export default function PostModal() {
         setText('')
         setStatus('idle')
         setRocketPhase(null)
-        setTextareaRows(3)
       }, 1000)
 
     } catch (err) {
@@ -226,13 +195,12 @@ export default function PostModal() {
     }
   }
 
-  const handleClose = () => {
-    // If there's text content, show the confirm dialog instead of closing immediately
+  // ─── Dirty-close: show confirm dialog if there's unsaved text ───────────
+  const handleDirtyClose = () => {
     if (text.trim().length > 0) {
       setShowConfirm(true)
       return
     }
-    // Empty text — close immediately
     doClose()
   }
 
@@ -241,7 +209,6 @@ export default function PostModal() {
     setPostModalOpen(false)
     setStatus('idle')
     setErrorMsg('')
-    setTextareaRows(3)
     setKeyboardOffset(0)
     // Keep a crisis-preserved draft in the store so closing the panel does not
     // destroy writing the user has not yet decided about.
@@ -259,7 +226,6 @@ export default function PostModal() {
     setPostModalOpen(false)
     setStatus('idle')
     setErrorMsg('')
-    setTextareaRows(3)
     setKeyboardOffset(0)
   }
 
@@ -268,240 +234,145 @@ export default function PostModal() {
     setShowConfirm(false)
   }
 
-  // ─── Shared content (used in both mobile and desktop layouts) ───────────
-  const renderContent = () => (
+  // ─── Render ─────────────────────────────────────────────────────────────
+  return (
     <>
-      {/* ── Rocket animation overlay ─────────────────────────────────────── */}
-      {rocketPhase ? (
-        <RocketAnimation phase={rocketPhase} />
-      ) : (
-      <>
-      {/* ── Tailored prompt from the check-in ────────────────────────────── */}
-      {tailoredPrompt && (
-        <div
-          className="rounded-xl px-4 py-3 text-sm"
-          style={{
-            background: `${selectedPlanet?.color}14`,
-            border: `1px solid ${selectedPlanet?.color}33`,
-          }}
-        >
-          <p className="text-slate-200 font-medium">{tailoredPrompt}</p>
-          {!isSmallScreen && (
-            <p className="text-xs text-slate-500 mt-1">
-              Write as much or as little as you want.
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* ── Textarea ─────────────────────────────────────────────────────── */}
-      <div className="relative">
-        <textarea
-          ref={textareaRef}
-          value={text}
-          onChange={(e) => {
-            if (e.target.value.length <= MAX_CHARS) setText(e.target.value)
-            if (status === 'blocked') setStatus('idle')
-            // Trigger auto-grow on next frame
-            if (isSmallScreen) {
-              requestAnimationFrame(handleTextareaAutoGrow)
-            }
-          }}
-          placeholder={
-            tailoredPrompt
-              ? 'Write freely — this is yours alone…'
-              : `What's on your mind?`
-          }
-          rows={isSmallScreen ? textareaRows : 5}
-          autoFocus={!isSmallScreen}
-          data-gramm="false"
-          data-gramm_editor="false"
-          data-enable-grammarly="false"
-          spellCheck={false}
-          className="w-full bg-white/[0.03] border border-white/[0.08] rounded-sm px-3 py-3
-                     text-slate-200 placeholder-slate-600 text-sm resize-none
-                     focus:outline-none focus:border-white/20 transition-colors"
-          style={{
-            maxHeight: isSmallScreen ? '25dvh' : undefined,
-            overscrollBehavior: isSmallScreen ? 'contain' : undefined,
-          }}
-          aria-label="Post content"
-          disabled={status === 'checking' || status === 'success'}
-        />
-        <span className={`absolute bottom-3 right-3 text-xs font-mono
-          ${remaining < 30 ? 'text-orange-400' : 'text-slate-500'}`}>
-          {remaining}
-        </span>
-      </div>
-
-      {/* ── Status banners ───────────────────────────────────────────────── */}
-      {status === 'blocked' && (
-        <div className="flex items-start gap-2 bg-red-900/30 border border-red-700/40
-                        rounded-xl px-4 py-3 text-sm text-red-300">
-          <span>🚫</span>
-          <p>{errorMsg}</p>
-        </div>
-      )}
-      {status === 'error' && (
-        <div className="flex items-start gap-2 bg-orange-900/30 border border-orange-700/40
-                        rounded-xl px-4 py-3 text-sm text-orange-300">
-          <span>⚠️</span>
-          <p>{errorMsg}</p>
-        </div>
-      )}
-      {status === 'success' && (
-        <div className="flex items-center gap-2 bg-emerald-900/30 border border-emerald-700/40
-                        rounded-xl px-4 py-3 text-sm text-emerald-300">
-          <span>✅</span>
-          <p>Your message has been broadcast to the stars.</p>
-        </div>
-      )}
-
-      {/* ── Disclaimer (hidden on mobile) ────────────────────────────────── */}
-      {!isSmallScreen && (
-        <p className="text-xs text-slate-400 leading-relaxed">
-          AI-moderated for safety. Your session is never linked to your identity.
-        </p>
-      )}
-
-      {/* ── Actions ──────────────────────────────────────────────────────── */}
-      <div className="flex gap-2">
-        <button
-          onClick={handleClose}
-          className={`flex-1 rounded-sm tracking-[0.1em] uppercase
-                     text-slate-300 border border-white/[0.15]
-                     hover:text-white hover:border-white/30 transition-all
-                     ${isSmallScreen
-                       ? 'py-2.5 text-[10px] min-h-[44px]'
-                       : 'py-2.5 text-xs'}`}
-          style={isSmallScreen ? { minHeight: '44px', paddingTop: '10px', paddingBottom: '10px', fontSize: '10px' } : undefined}
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleSubmit}
-          disabled={!text.trim() || status === 'checking' || status === 'success'}
-          className={`flex-1 rounded-sm tracking-[0.1em] uppercase font-medium
-                     text-white border border-white/30
-                     hover:bg-white hover:text-[#050510]
-                     disabled:opacity-30 disabled:cursor-not-allowed
-                     transition-all duration-200
-                     ${isSmallScreen
-                       ? 'py-2.5 text-[10px] min-h-[44px]'
-                       : 'py-2.5 text-xs'}`}
-          style={isSmallScreen ? { minHeight: '44px', paddingTop: '10px', paddingBottom: '10px', fontSize: '10px' } : undefined}
-          aria-busy={status === 'checking'}
-        >
-          {status === 'checking' ? 'Broadcasting...' : status === 'success' ? '✓ Sent' : 'Broadcast'}
-        </button>
-      </div>
-      </>
-      )}
-    </>
-  )
-
-  // ─── Mobile layout: use BottomSheet ─────────────────────────────────────
-  if (isSmallScreen) {
-    // Landscape mobile: centered card
-    if (isLandscape) {
-      return (
-        <>
-        <BottomSheet
-          open={true}
-          onClose={handleClose}
-          zIndex={50}
-          landscape={false}
-        >
-          <div
-            ref={sheetRef}
-            className="flex flex-col gap-2 p-3 mx-auto"
-            style={{
-              maxWidth: '420px',
-              maxHeight: '85dvh',
-              width: '100%',
-            }}
-            role="dialog"
-            aria-label={`Broadcast to ${selectedPlanet?.label}`}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between gap-2" style={{ maxHeight: '40px' }}>
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-slate-500 text-[10px] leading-none" aria-hidden="true">⠿</span>
-                <p className="text-[10px] tracking-[0.1em] uppercase text-slate-400 truncate">
-                  Broadcast to <span className="text-white font-medium">{selectedPlanet?.label}</span>
-                </p>
-              </div>
-              <button
-                onClick={handleClose}
-                className="text-slate-500 hover:text-white transition-colors shrink-0
-                           flex items-center justify-center"
-                style={{ width: '44px', height: '44px' }}
-                aria-label="Close"
-              >
-                <span style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>✕</span>
-              </button>
-            </div>
-
-            {renderContent()}
-          </div>
-        </BottomSheet>
-        <ConfirmDialog
-          open={showConfirm}
-          message="Discard your draft?"
-          cancelLabel="Keep Writing"
-          confirmLabel="Discard"
-          onCancel={handleCancelDiscard}
-          onConfirm={handleConfirmDiscard}
-        />
-        </>
-      )
-    }
-
-    // Portrait mobile: bottom sheet with keyboard handling
-    return (
-      <>
-      <BottomSheet
-        open={true}
-        onClose={handleClose}
-        zIndex={50}
+      <ModalShell
+        open={postModalOpen}
+        onClose={handleDirtyClose}
+        type="panel"
+        zIndex={Z.POST_MODAL}
         maxHeight="55dvh"
+        draggable
+        desktopWidth={420}
+        ariaLabel={`Broadcast to ${selectedPlanet?.label}`}
       >
         <div
-          ref={sheetRef}
-          className="flex flex-col gap-2 p-3"
+          className="flex flex-col gap-3 p-4"
           style={{
-            padding: '12px',
-            gap: '8px',
             transform: keyboardOffset > 0 ? `translateY(-${keyboardOffset}px)` : undefined,
-            transition: 'transform 0.15s ease-out',
+            transition: keyboardOffset > 0 ? 'transform 0.15s ease-out' : undefined,
           }}
-          role="dialog"
-          aria-label={`Broadcast to ${selectedPlanet?.label}`}
         >
-          {/* Header: drag handle + label + planet name + close — ≤ 40px */}
-          <div className="flex items-center justify-between gap-2" style={{ maxHeight: '40px' }}>
-            <div className="flex items-center gap-2 min-w-0">
-              {/* Drag handle indicator */}
-              <span className="text-slate-500 text-[10px] leading-none" aria-hidden="true">⠿</span>
-              <p className="text-[10px] tracking-[0.1em] uppercase text-slate-400 truncate">
-                Broadcast to <span className="text-white font-medium">{selectedPlanet?.label}</span>
-              </p>
-            </div>
-            {/* Close button: 44×44 tap area, ≤ 28×28 visual */}
-            <button
-              onClick={handleClose}
-              className="text-slate-500 hover:text-white transition-colors shrink-0
-                         flex items-center justify-center"
-              style={{ width: '44px', height: '44px' }}
-              aria-label="Close"
-            >
-              <span style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>✕</span>
-            </button>
+          {/* ── Header: planet label ───────────────────────────────────────── */}
+          <div className="flex items-center gap-2 min-w-0">
+            <p className="text-xs tracking-[0.15em] uppercase text-slate-400">
+              Broadcast to{' '}
+              <span className="text-white font-medium">{selectedPlanet?.label}</span>
+            </p>
           </div>
 
-          {renderContent()}
+          {/* ── Rocket animation overlay ───────────────────────────────────── */}
+          {rocketPhase ? (
+            <RocketAnimation phase={rocketPhase} />
+          ) : (
+            <>
+              {/* ── Tailored prompt from the check-in ──────────────────────── */}
+              {tailoredPrompt && (
+                <div
+                  className="rounded-xl px-4 py-3 text-sm"
+                  style={{
+                    background: `${selectedPlanet?.color}14`,
+                    border: `1px solid ${selectedPlanet?.color}33`,
+                  }}
+                >
+                  <p className="text-slate-200 font-medium">{tailoredPrompt}</p>
+                  {!isSmallScreen && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Write as much or as little as you want.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* ── Textarea ───────────────────────────────────────────────── */}
+              <div className="relative">
+                <Textarea
+                  ref={textareaRef}
+                  value={text}
+                  onChange={(e) => {
+                    if (e.target.value.length <= MAX_CHARS) setText(e.target.value)
+                    if (status === 'blocked') setStatus('idle')
+                  }}
+                  placeholder={
+                    tailoredPrompt
+                      ? 'Write freely — this is yours alone…'
+                      : `What's on your mind?`
+                  }
+                  rows={isSmallScreen ? 3 : 5}
+                  autoFocus={!isSmallScreen}
+                  disabled={status === 'checking' || status === 'success'}
+                  aria-label="Post content"
+                  className=""
+                  data-gramm="false"
+                  data-gramm_editor="false"
+                  data-enable-grammarly="false"
+                  spellCheck={false}
+                />
+                <span className={`absolute bottom-3 right-3 text-xs font-mono
+                  ${remaining < 30 ? 'text-orange-400' : 'text-slate-500'}`}>
+                  {remaining}
+                </span>
+              </div>
+
+              {/* ── Status banners ─────────────────────────────────────────── */}
+              {status === 'blocked' && (
+                <Banner type="error">
+                  <div className="flex items-start gap-2">
+                    <span>🚫</span>
+                    <p>{errorMsg}</p>
+                  </div>
+                </Banner>
+              )}
+              {status === 'error' && (
+                <Banner type="warning">
+                  <div className="flex items-start gap-2">
+                    <span>⚠️</span>
+                    <p>{errorMsg}</p>
+                  </div>
+                </Banner>
+              )}
+              {status === 'success' && (
+                <Banner type="success">
+                  <div className="flex items-center gap-2">
+                    <span>✅</span>
+                    <p>Your message has been broadcast to the stars.</p>
+                  </div>
+                </Banner>
+              )}
+
+              {/* ── Disclaimer (hidden on mobile) ──────────────────────────── */}
+              {!isSmallScreen && (
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  AI-moderated for safety. Your session is never linked to your identity.
+                </p>
+              )}
+
+              {/* ── Actions ────────────────────────────────────────────────── */}
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={handleDirtyClose}
+                  fullWidth
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleSubmit}
+                  disabled={!text.trim() || status === 'success'}
+                  loading={status === 'checking'}
+                  fullWidth
+                >
+                  {status === 'success' ? '✓ Sent' : 'Broadcast'}
+                </Button>
+              </div>
+            </>
+          )}
         </div>
-      </BottomSheet>
+      </ModalShell>
+
+      {/* ── Confirm discard dialog ────────────────────────────────────────── */}
       <ConfirmDialog
         open={showConfirm}
         message="Discard your draft?"
@@ -510,76 +381,6 @@ export default function PostModal() {
         onCancel={handleCancelDiscard}
         onConfirm={handleConfirmDiscard}
       />
-      </>
-    )
-  }
-
-  // ─── Desktop layout: draggable floating panel (unchanged) ───────────────
-  const wrapperStyle = {
-    ...dragProps.style,
-    left: position.x,
-    top: position.y,
-    width: panelWidth,
-    maxWidth: 'calc(100vw - 24px)',
-    background: 'rgba(10,10,26,0.92)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: '4px',
-    backdropFilter: 'blur(16px)',
-    boxShadow: isDragging
-      ? '0 30px 60px -12px rgba(0,0,0,0.9)'
-      : '0 20px 40px -12px rgba(0,0,0,0.8)',
-    cursor: isDragging ? 'grabbing' : 'default',
-  }
-
-  return (
-    <>
-    <div
-      {...dragProps}
-      className="fixed z-50 flex flex-col gap-3 p-5 animate-pop-in"
-      style={wrapperStyle}
-      role="dialog"
-      aria-label={`Broadcast to ${selectedPlanet?.label}`}
-    >
-      {/* ── Drag handle / header ─────────────────────────────────────────── */}
-      <div
-        {...handleProps}
-        className="flex items-center justify-between gap-3 select-none"
-      >
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-slate-500 text-xs leading-none shrink-0" aria-hidden="true">
-            ⠿
-          </span>
-          <div className="min-w-0">
-            <p className="text-xs tracking-[0.15em] uppercase text-slate-400">
-              Broadcast to
-            </p>
-            <h2 className="text-base font-medium text-white truncate">
-              {selectedPlanet?.label}
-            </h2>
-          </div>
-        </div>
-
-        <button
-          onClick={handleClose}
-          data-no-drag
-          className="text-slate-500 hover:text-white transition-colors text-sm
-                     leading-none shrink-0 px-1"
-          aria-label="Close"
-        >
-          ✕
-        </button>
-      </div>
-
-      {renderContent()}
-    </div>
-    <ConfirmDialog
-      open={showConfirm}
-      message="Discard your draft?"
-      cancelLabel="Keep Writing"
-      confirmLabel="Discard"
-      onCancel={handleCancelDiscard}
-      onConfirm={handleConfirmDiscard}
-    />
     </>
   )
 }

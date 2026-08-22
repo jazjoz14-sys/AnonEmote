@@ -1,5 +1,9 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import useAppStore from '../../store/useAppStore'
+import ModalShell from '../ui/ModalShell'
+import Button from '../ui/Button'
+import Card from '../ui/Card'
+import { Z } from '../../design/tokens'
 
 /**
  * CrisisModal — shown when the moderation engine detects crisis indicators.
@@ -11,6 +15,15 @@ import useAppStore from '../../store/useAppStore'
  * privately to this device, or discard it themselves.
  *
  * The tone deliberately avoids anything that reads as rejection or punishment.
+ *
+ * Uses ModalShell for:
+ * - Focus trap (accessibility)
+ * - Body scroll lock
+ * - Z-index stacking (Z.CRISIS_MODAL = 100)
+ * - Responsive layout (mobile portrait: BottomSheet, landscape: centered card, desktop: centered panel)
+ * - preventBackdropClose (only closeable via explicit user choice)
+ *
+ * Requirements: 12.1–12.8
  */
 
 const HOTLINES = [
@@ -31,6 +44,7 @@ export default function CrisisModal() {
 
   const [view, setView] = useState('support') // 'support' | 'choices' | 'saved'
   const draft = crisis.draft || ''
+  const open = crisis.open
 
   /** Return to the composer with their words still there. */
   const keepWriting = () => {
@@ -38,29 +52,36 @@ export default function CrisisModal() {
     setPostModalOpen(true)
   }
 
+  /** Save the draft locally — never sent to any server. */
   const saveForMyself = () => {
     if (draft.trim()) savePrivateNote(draft)
     setView('saved')
   }
 
+  /** Discard the draft — the user explicitly chose this. */
   const discard = () => {
     clearCrisisDraft()
     setPostModalOpen(false)
   }
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto"
-      style={{ background: 'rgba(6,6,16,0.9)', backdropFilter: 'blur(10px)' }}
+    <ModalShell
+      open={open}
+      onClose={() => {}}
+      type="modal"
+      zIndex={Z.CRISIS_MODAL}
+      preventBackdropClose={true}
+      draggable={false}
+      desktopWidth={480}
       role="alertdialog"
-      aria-modal="true"
-      aria-label="Support resources"
-      aria-live="assertive"
+      ariaLabel="Crisis support resources"
     >
-      <div className="w-full max-w-md glass-dark rounded-3xl p-7 flex flex-col gap-5
-                      animate-slide-up border border-violet-500/25 my-8">
-
-        {/* ── Support view ─────────────────────────────────────────────── */}
+      <div
+        className="flex flex-col gap-5 p-6"
+        aria-live="assertive"
+        style={{ overscrollBehaviorY: 'contain' }}
+      >
+        {/* ── Support view ─────────────────────────────────────────── */}
         {view === 'support' && (
           <>
             <div className="flex flex-col items-center gap-3 text-center">
@@ -75,27 +96,26 @@ export default function CrisisModal() {
               </p>
             </div>
 
-            {/* Hotlines */}
+            {/* Hotline cards — using Card surface pattern */}
             <div className="flex flex-col gap-2">
               {HOTLINES.map((h) => (
-                <div
-                  key={h.name}
-                  className="glass rounded-xl px-4 py-3 flex items-center justify-between gap-3"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm text-white font-medium truncate">
-                      {h.flag} {h.name}
-                    </p>
-                    <p className="text-xs text-slate-500">{h.note}</p>
+                <Card key={h.name} variant="default" className="px-4 py-3 bg-white/[0.03]">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm text-white font-medium truncate">
+                        {h.flag} {h.name}
+                      </p>
+                      <p className="text-xs text-slate-500">{h.note}</p>
+                    </div>
+                    <a
+                      href={`tel:${h.number.replace(/[^\d+]/g, '')}`}
+                      className="text-sm font-mono font-bold text-violet-300
+                                 hover:text-violet-200 transition-colors shrink-0"
+                    >
+                      {h.number}
+                    </a>
                   </div>
-                  <a
-                    href={`tel:${h.number.replace(/[^\d+]/g, '')}`}
-                    className="text-sm font-mono font-bold text-violet-300
-                               hover:text-violet-200 transition-colors shrink-0"
-                  >
-                    {h.number}
-                  </a>
-                </div>
+                </Card>
               ))}
             </div>
 
@@ -113,18 +133,18 @@ export default function CrisisModal() {
               </p>
             </div>
 
-            <button
+            <Button
+              variant="cta"
+              fullWidth
               onClick={() => setView('choices')}
-              className="w-full py-3.5 rounded-2xl font-semibold text-white
-                         bg-gradient-to-r from-violet-700 to-indigo-700
-                         hover:from-violet-600 hover:to-indigo-600 transition-all"
+              className="min-h-[44px]"
             >
               Continue
-            </button>
+            </Button>
           </>
         )}
 
-        {/* ── Choices view — the user decides, not the system ──────────── */}
+        {/* ── Choices view — the user decides, not the system ──────── */}
         {view === 'choices' && (
           <>
             <div className="flex flex-col gap-2">
@@ -140,17 +160,17 @@ export default function CrisisModal() {
 
             {/* Their words, preserved and visible */}
             {draft && (
-              <div className="glass rounded-xl px-4 py-3 max-h-32 overflow-y-auto">
+              <Card variant="default" className="px-4 py-3 max-h-32 overflow-y-auto bg-white/[0.03]">
                 <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap break-words">
                   {draft}
                 </p>
-              </div>
+              </Card>
             )}
 
             <div className="flex flex-col gap-2">
               <ChoiceButton
                 icon="✍️"
-                title="Keep writing"
+                title="Keep Writing"
                 sub="Go back with your words still there"
                 onClick={keepWriting}
               />
@@ -162,8 +182,8 @@ export default function CrisisModal() {
               />
               <ChoiceButton
                 icon="🗑️"
-                title="Discard it"
-                sub="Remove what I wrote"
+                title="Start Fresh"
+                sub="Remove what I wrote and start over"
                 onClick={discard}
                 muted
               />
@@ -171,7 +191,7 @@ export default function CrisisModal() {
           </>
         )}
 
-        {/* ── Saved confirmation ───────────────────────────────────────── */}
+        {/* ── Saved confirmation ───────────────────────────────────── */}
         {view === 'saved' && (
           <>
             <div className="flex flex-col items-center gap-3 text-center">
@@ -183,18 +203,18 @@ export default function CrisisModal() {
                 left behind on a shared computer.
               </p>
               <p className="text-xs text-slate-600">
-                You can find it under “My notes” in the star system.
+                You can find it under "My notes" in the star system.
               </p>
             </div>
 
-            <button
+            <Button
+              variant="cta"
+              fullWidth
               onClick={() => { closeCrisis(); setPostModalOpen(false) }}
-              className="w-full py-3.5 rounded-2xl font-semibold text-white
-                         bg-gradient-to-r from-violet-700 to-indigo-700
-                         hover:from-violet-600 hover:to-indigo-600 transition-all"
+              className="min-h-[44px]"
             >
               Return to the stars
-            </button>
+            </Button>
 
             <p className="text-center text-xs text-slate-600">
               Please still consider reaching out to one of those hotlines.
@@ -202,18 +222,25 @@ export default function CrisisModal() {
           </>
         )}
       </div>
-    </div>
+    </ModalShell>
   )
 }
 
+/**
+ * ChoiceButton — interactive card-style button for crisis choices.
+ * Uses hover:bg-white/[0.08] to white/[0.14] per design spec.
+ * Minimum 44px touch target for mobile accessibility.
+ */
 function ChoiceButton({ icon, title, sub, onClick, muted = false }) {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left
+      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left
+                  border border-white/[0.08] min-h-[44px]
                   transition-all duration-200
+                  focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70
                   ${muted
-                    ? 'bg-white/[0.04] hover:bg-white/[0.08]'
+                    ? 'bg-white/[0.03] hover:bg-white/[0.08]'
                     : 'bg-white/[0.08] hover:bg-white/[0.14]'}`}
     >
       <span className="text-xl shrink-0">{icon}</span>

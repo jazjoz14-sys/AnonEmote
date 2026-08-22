@@ -1,21 +1,42 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import ModalShell from '../ui/ModalShell'
+import Input from '../ui/Input'
+import Button from '../ui/Button'
+import Banner from '../ui/Banner'
+import { Z, MAX_WIDTH } from '../../design/tokens'
 
 /**
  * AuthPromptModal — shown when a guest user attempts a write action (post, react, reply).
  * Offers sign-in and registration via email/password using the existing Supabase client.
  * Preserves planet context so the user returns to the same planet after auth.
  *
- * @param {{ open: boolean, onClose: () => void, planetContext: string|null }} props
+ * Adopts ModalShell for unified modal rendering (BottomSheet on mobile portrait,
+ * centered card on landscape mobile, floating panel on desktop).
+ *
+ * @param {{ open: boolean, onClose: () => void, planetContext: string|null, actionLabel: string|null }} props
+ * @param props.actionLabel — Optional label identifying the blocked action (e.g. "Sign in to react").
+ *        When provided, rendered above the form as additional context per Requirement 17.3.
  */
-export default function AuthPromptModal({ open, onClose, planetContext }) {
+export default function AuthPromptModal({ open, onClose, planetContext, actionLabel }) {
   const [mode, setMode] = useState('signin') // 'signin' | 'register'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
 
-  if (!open) return null
+  /**
+   * Dismiss handler — resets all form state and calls the parent onClose.
+   * The parent is responsible for clearing selectedPlanet state.
+   */
+  const handleDismiss = () => {
+    setEmail('')
+    setPassword('')
+    setError(null)
+    setLoading(false)
+    setMode('signin')
+    onClose()
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -56,27 +77,25 @@ export default function AuthPromptModal({ open, onClose, planetContext }) {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      role="dialog"
-      aria-modal="true"
-      aria-label={mode === 'signin' ? 'Sign in to continue' : 'Create an account'}
+    <ModalShell
+      open={open}
+      onClose={handleDismiss}
+      type="modal"
+      zIndex={Z.AUTH_PROMPT}
+      desktopWidth={MAX_WIDTH.AUTH_CARD}
+      draggable={false}
+      ariaLabel={mode === 'signin' ? 'Sign in to continue' : 'Create an account'}
     >
-      {/* Backdrop click to close */}
-      <div
-        className="absolute inset-0"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-
-      {/* Modal panel */}
-      <div className="relative bg-[#050510] border border-white/[0.08] rounded-2xl p-6 w-full max-w-sm mx-4">
+      {/* Modal content */}
+      <div className="p-6">
         {/* Close button */}
         <button
-          onClick={onClose}
+          onClick={handleDismiss}
           className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors
-                     flex items-center justify-center min-w-[44px] min-h-[44px]"
+                     flex items-center justify-center min-w-[44px] min-h-[44px]
+                     focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70"
           aria-label="Close"
+          type="button"
         >
           ✕
         </button>
@@ -96,13 +115,16 @@ export default function AuthPromptModal({ open, onClose, planetContext }) {
           </p>
         </div>
 
-        {/* Planet context indicator */}
+        {/* Action label — identifies which write action was blocked (Req 17.3) */}
+        {actionLabel && (
+          <p className="text-xs text-violet-300 mb-3">{actionLabel}</p>
+        )}
+
+        {/* Planet context banner */}
         {planetContext && (
-          <div className="mb-4 px-3 py-2 rounded-lg border border-violet-500/20 bg-violet-500/5">
-            <p className="text-xs text-violet-300">
-              You'll return to <span className="font-medium">{planetContext}</span> after signing in.
-            </p>
-          </div>
+          <Banner type="info" className="mb-4 !rounded-lg !border-violet-500/20 !bg-violet-500/5 !text-xs">
+            You'll return to <span className="font-medium">{planetContext}</span> after signing in.
+          </Banner>
         )}
 
         {/* Form */}
@@ -111,7 +133,7 @@ export default function AuthPromptModal({ open, onClose, planetContext }) {
             <label htmlFor="auth-email" className="block text-xs text-white/60 mb-1.5">
               Email
             </label>
-            <input
+            <Input
               id="auth-email"
               type="email"
               value={email}
@@ -120,10 +142,7 @@ export default function AuthPromptModal({ open, onClose, planetContext }) {
               required
               autoComplete="email"
               disabled={loading}
-              className="w-full bg-transparent border border-white/[0.12] rounded-lg px-4 py-3
-                         text-white placeholder-white/30 text-sm
-                         focus:border-violet-500 focus:ring-1 focus:ring-violet-500/60
-                         focus:outline-none transition-colors disabled:opacity-50"
+              className="!border-white/[0.12] !rounded-lg focus:!border-violet-500 focus:!ring-1 focus:!ring-violet-500/60"
             />
           </div>
 
@@ -131,7 +150,7 @@ export default function AuthPromptModal({ open, onClose, planetContext }) {
             <label htmlFor="auth-password" className="block text-xs text-white/60 mb-1.5">
               Password
             </label>
-            <input
+            <Input
               id="auth-password"
               type="password"
               value={password}
@@ -141,34 +160,30 @@ export default function AuthPromptModal({ open, onClose, planetContext }) {
               minLength={6}
               autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
               disabled={loading}
-              className="w-full bg-transparent border border-white/[0.12] rounded-lg px-4 py-3
-                         text-white placeholder-white/30 text-sm
-                         focus:border-violet-500 focus:ring-1 focus:ring-violet-500/60
-                         focus:outline-none transition-colors disabled:opacity-50"
+              className="!border-white/[0.12] !rounded-lg focus:!border-violet-500 focus:!ring-1 focus:!ring-violet-500/60"
             />
           </div>
 
           {/* Error message */}
           {error && (
-            <div className="px-3 py-2 rounded-lg border border-red-500/30 bg-red-500/10">
-              <p className="text-xs text-red-300">{error}</p>
-            </div>
+            <Banner type="error" className="!text-xs !py-2 !px-3">
+              {error}
+            </Banner>
           )}
 
           {/* Submit button */}
-          <button
+          <Button
             type="submit"
-            disabled={loading || !email || !password}
-            className="w-full bg-violet-600 hover:bg-violet-500 text-white rounded-lg
-                       px-6 py-3 min-h-[44px] font-medium text-sm
-                       disabled:opacity-40 disabled:cursor-not-allowed
-                       focus:outline-none focus:ring-2 focus:ring-violet-500/60
-                       transition-colors"
+            variant="cta"
+            fullWidth
+            loading={loading}
+            disabled={!email || !password}
+            className="min-h-[44px]"
           >
             {loading
               ? (mode === 'signin' ? 'Signing in...' : 'Creating account...')
               : (mode === 'signin' ? 'Sign In' : 'Create Account')}
-          </button>
+          </Button>
         </form>
 
         {/* Mode toggle */}
@@ -178,7 +193,7 @@ export default function AuthPromptModal({ open, onClose, planetContext }) {
             disabled={loading}
             className="text-sm text-violet-300 hover:text-violet-200 underline
                        min-h-[44px] px-2 disabled:opacity-50
-                       focus:outline-none focus:ring-2 focus:ring-violet-500/60 rounded"
+                       focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70 rounded"
             type="button"
           >
             {mode === 'signin'
@@ -187,6 +202,6 @@ export default function AuthPromptModal({ open, onClose, planetContext }) {
           </button>
         </div>
       </div>
-    </div>
+    </ModalShell>
   )
 }

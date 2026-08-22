@@ -4,6 +4,8 @@ import { FEELINGS } from '../data/emotions'
 import { getPlanetById } from '../data/planets'
 import { useIsSmallScreen, useIsNarrow } from '../lib/device'
 import PreloadManager from '../components/3d/models/PreloadManager'
+import Card from '../components/ui/Card'
+import Button from '../components/ui/Button'
 
 /**
  * CheckInScreen — a brief emotional triage before entering the star system.
@@ -72,7 +74,7 @@ export default function CheckInScreen() {
     <>
       <PreloadManager />
       <div
-        className="relative w-full h-full flex items-start justify-center p-4 md:p-6 overflow-y-auto bg-[#050510]"
+        className="relative w-full h-full flex items-start justify-center p-4 md:p-6 overflow-y-auto overflow-x-hidden bg-[#050510]"
       >
 
       <div
@@ -106,12 +108,14 @@ export default function CheckInScreen() {
               style={isNarrow ? { maxHeight: '55vh', overflowY: 'auto' } : undefined}
             >
               {FEELINGS.map((f) => (
-                <button
+                <Card
                   key={f.id}
+                  variant="interactive"
                   onClick={() => chooseFeeling(f)}
-                  className={`border border-white/[0.08] bg-transparent rounded-xl
-                             transition-all duration-200 hover:border-white/20 hover:scale-[1.02]
-                             focus-visible:ring-2 focus-visible:ring-violet-500/60 focus-visible:outline-none
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chooseFeeling(f) } }}
+                  className={`hover:scale-[1.02]
                              ${isNarrow
                                ? 'flex flex-row items-center gap-3 p-3 min-h-[44px]'
                                : isMobile
@@ -124,7 +128,7 @@ export default function CheckInScreen() {
                     <span className="font-semibold text-white text-sm">{f.label}</span>
                     <span className="text-xs text-white/60 leading-snug">{f.sub}</span>
                   </div>
-                </button>
+                </Card>
               ))}
             </div>
           </>
@@ -155,29 +159,31 @@ export default function CheckInScreen() {
 
             <div className={getStep2GridClass()}>
               {feeling.nuances.map((n) => (
-                <button
+                <Card
                   key={n.id}
+                  variant="interactive"
                   onClick={() => chooseNuance(n)}
-                  className={`border border-white/[0.08] bg-transparent rounded-xl font-medium text-white/70
-                             transition-all duration-200 hover:border-white/20 hover:scale-[1.02]
-                             hover:text-white focus-visible:ring-2 focus-visible:ring-violet-500/60 focus-visible:outline-none
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chooseNuance(n) } }}
+                  className={`hover:scale-[1.02] font-medium text-white/70 hover:text-white
                              ${isMobile
                                ? 'px-3 py-3 min-h-[44px] text-[13px]'
                                : 'px-3 sm:px-4 py-4 sm:py-5 min-h-[44px] min-w-[44px] text-sm'
                              }`}
                 >
                   {n.label}
-                </button>
+                </Card>
               ))}
             </div>
 
-            <button
+            <Button
+              variant="ghost"
               onClick={() => { setStep(1); setFeeling(null) }}
-              className="text-xs text-white/50 hover:text-white/70 transition-colors self-center min-h-[44px] flex items-center
-                         focus-visible:ring-2 focus-visible:ring-violet-500/60 focus-visible:outline-none rounded"
+              className="self-center"
             >
               ← Choose a different feeling
-            </button>
+            </Button>
           </>
         )}
 
@@ -185,21 +191,18 @@ export default function CheckInScreen() {
             Always allow bypassing the questions. Someone in distress should
             never be gated behind a form. */}
         <div className="flex flex-col items-center gap-2 pt-2">
-          <button
+          <Button
+            variant="secondary"
             onClick={() => enterSpace({ withComposer: false })}
-            className="border border-white/[0.08] bg-transparent px-5 py-2.5 rounded-xl text-sm text-white/60
-                       hover:border-white/20 hover:text-white transition-all min-h-[44px] flex items-center
-                       focus-visible:ring-2 focus-visible:ring-violet-500/60 focus-visible:outline-none"
           >
             Skip — let me explore the star system
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             onClick={() => setPhase('avatar')}
-            className="text-xs text-white/50 hover:text-white/70 transition-colors min-h-[44px] flex items-center
-                       focus-visible:ring-2 focus-visible:ring-violet-500/60 focus-visible:outline-none rounded"
           >
             ← Back to avatar
-          </button>
+          </Button>
         </div>
       </div>
     </div>

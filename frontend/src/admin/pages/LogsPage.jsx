@@ -1,7 +1,21 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { getStreamUrl } from './adminApi'
+import { getStreamUrl } from '../adminApi'
 
-const MAX_ENTRIES = 500
+export const MAX_ENTRIES = 500
+
+/**
+ * Add a log entry to the buffer, maintaining the capacity cap.
+ * New entries go to the front (newest-first). If the buffer exceeds
+ * MAX_ENTRIES, the oldest entries (at the end) are discarded.
+ *
+ * @param {Array} buffer - Current entry buffer
+ * @param {Object} entry - New entry to add
+ * @returns {Array} Updated buffer
+ */
+export function addLogEntry(buffer, entry) {
+  const next = [entry, ...buffer]
+  return next.length > MAX_ENTRIES ? next.slice(0, MAX_ENTRIES) : next
+}
 
 /** Severity filter options */
 const SEVERITY_FILTERS = [
@@ -67,20 +81,20 @@ function summarizePayload(payload) {
 }
 
 /**
- * LiveLogsTab — Real-time SSE log stream viewer for the admin console.
+ * LogsPage — Real-time SSE log stream viewer for the admin console.
  *
  * Connects to the backend SSE endpoint on mount, displays entries with severity
- * badges, and tracks connection state. Filter and pause controls will be added
- * in subsequent tasks (4.3 and 4.4).
+ * badges, and tracks connection state. Provides severity and type filters,
+ * connection state indicator, and a 500 entry buffer cap.
+ *
+ * Designed to render inside PageShell (no own title/header).
  *
  * @param {{ onAuthError: () => void }} props
  */
-export default function LiveLogsTab({ onAuthError }) {
+export default function LogsPage({ onAuthError }) {
   // ── State ──────────────────────────────────────────────────────────────
   const [entries, setEntries] = useState([])
   const [connectionState, setConnectionState] = useState('disconnected')
-
-  // Placeholders for task 4.3 (filters) and 4.4 (pause) — structured for easy addition
   const [paused, setPaused] = useState(false)
   const [pauseBuffer, setPauseBuffer] = useState([])
   const [severityFilter, setSeverityFilter] = useState('all')
@@ -122,10 +136,7 @@ export default function LiveLogsTab({ onAuthError }) {
         setConnectionState('live')
         failCountRef.current = 0
 
-        setEntries((prev) => {
-          const next = [entry, ...prev]
-          return next.length > MAX_ENTRIES ? next.slice(0, MAX_ENTRIES) : next
-        })
+        setEntries((prev) => addLogEntry(prev, entry))
       } catch (err) {
         console.warn('[LiveLogs] Failed to parse SSE message:', err)
       }
@@ -165,33 +176,30 @@ export default function LiveLogsTab({ onAuthError }) {
 
   // ── Render ──────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-4">
-      {/* ── Header row: title + connection indicator ─────────────────────── */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-white">Live Logs</h2>
+    <div className="space-y-4 sm:space-y-6">
+      {/* ── Connection indicator + Reconnect button ──────────────────────── */}
+      <div className="flex items-center justify-end gap-3">
+        {/* Connection badge */}
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${CONNECTION_STYLES[connectionState]}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${
+            connectionState === 'live' ? 'bg-emerald-400 animate-pulse' :
+            connectionState === 'reconnecting' ? 'bg-amber-400 animate-pulse' :
+            'bg-red-400'
+          }`} />
+          {CONNECTION_LABELS[connectionState]}
+        </span>
 
-        <div className="flex items-center gap-3">
-          {/* Connection badge */}
-          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${CONNECTION_STYLES[connectionState]}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${
-              connectionState === 'live' ? 'bg-emerald-400 animate-pulse' :
-              connectionState === 'reconnecting' ? 'bg-amber-400 animate-pulse' :
-              'bg-red-400'
-            }`} />
-            {CONNECTION_LABELS[connectionState]}
-          </span>
-
-          {/* Reconnect button — only shown when disconnected */}
-          {connectionState === 'disconnected' && (
-            <button
-              onClick={connect}
-              className="glass px-3 py-1.5 rounded-xl text-xs text-slate-400
-                         hover:text-white transition-colors"
-            >
-              Reconnect
-            </button>
-          )}
-        </div>
+        {/* Reconnect button — only shown when disconnected */}
+        {connectionState === 'disconnected' && (
+          <button
+            onClick={connect}
+            className="px-3 py-1.5 rounded-xl text-xs text-slate-400
+                       hover:text-white transition-colors glass
+                       focus:outline-none focus:ring-2 focus:ring-violet-500"
+          >
+            Reconnect
+          </button>
+        )}
       </div>
 
       {/* ── Filter controls ──────────────────────────────────────────────── */}
@@ -202,7 +210,7 @@ export default function LiveLogsTab({ onAuthError }) {
             <button
               key={f.id}
               onClick={() => setSeverityFilter(f.id)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 ${
                 severityFilter === f.id
                   ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
                   : 'glass text-slate-400 hover:text-slate-300'
@@ -219,7 +227,7 @@ export default function LiveLogsTab({ onAuthError }) {
             <button
               key={f.id}
               onClick={() => setTypeFilter(f.id)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 ${
                 typeFilter === f.id
                   ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
                   : 'glass text-slate-400 hover:text-slate-300'
@@ -232,7 +240,7 @@ export default function LiveLogsTab({ onAuthError }) {
       </div>
 
       {/* ── Log entries list ─────────────────────────────────────────────── */}
-      <div className="glass-dark rounded-xl border border-white/5 overflow-hidden">
+      <div className="glass rounded-2xl border border-white/5 overflow-hidden">
         {filteredEntries.length === 0 ? (
           <div className="px-5 py-10 text-center text-slate-500 text-sm">
             {connectionState === 'live'

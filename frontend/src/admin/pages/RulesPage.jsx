@@ -1,5 +1,14 @@
-import React, { useEffect, useState } from 'react'
-import { fetchLexicon, saveLexicon, testLexicon } from './adminApi'
+import React, { useEffect, useState, useRef } from 'react'
+import { fetchLexicon, saveLexicon, testLexicon } from '../adminApi'
+import Toast from '../components/Toast'
+
+/**
+ * Module-level cache so unsaved edits survive unmount/remount when
+ * the admin navigates between sections and comes back.
+ * Reset to null after a successful save (baseline synced).
+ * @type {{ crisis: string[], toxic: string[], allow: string[] } | null}
+ */
+let cachedLexicon = null
 
 const LISTS = [
   {
@@ -19,9 +28,9 @@ const LISTS = [
   {
     id: 'allow',
     label: 'Allow-list',
-    icon: '✅',
+    icon: '\u2705',
     accent: 'emerald',
-    help: 'Overrides the blocked lists to clear false positives. Cannot override crisis detection — safety always wins.',
+    help: 'Overrides the blocked lists to clear false positives. Cannot override crisis detection \u2014 safety always wins.',
   },
 ]
 
@@ -31,7 +40,10 @@ const ACCENT = {
   emerald: 'border-emerald-700/40 bg-emerald-900/20 text-emerald-200',
 }
 
-/** Editable chip list for one rule category. */
+/**
+ * Editable chip list for one rule category.
+ * Supports add (Enter/button), remove (chip ✕), duplicate rejection, lowercase trim.
+ */
 function TermList({ config, terms, onChange }) {
   const [draft, setDraft] = useState('')
 
@@ -44,7 +56,7 @@ function TermList({ config, terms, onChange }) {
   }
 
   return (
-    <section className="glass rounded-2xl p-4 flex flex-col gap-3">
+    <section className="glass rounded-2xl border border-white/5 p-3 sm:p-4 flex flex-col gap-3">
       <div>
         <h3 className="text-sm font-semibold text-white flex items-center gap-2">
           <span>{config.icon}</span> {config.label}
@@ -59,7 +71,7 @@ function TermList({ config, terms, onChange }) {
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add() } }}
-          placeholder="Add a word or phrase…"
+          placeholder="Add a word or phrase\u2026"
           className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2
                      text-slate-200 placeholder-slate-600 text-sm
                      focus:outline-none focus:border-violet-500/60
@@ -92,7 +104,7 @@ function TermList({ config, terms, onChange }) {
                 className="opacity-60 hover:opacity-100 transition-opacity"
                 aria-label={`Remove ${t}`}
               >
-                ✕
+                \u2715
               </button>
             </span>
           ))}
@@ -103,24 +115,38 @@ function TermList({ config, terms, onChange }) {
 }
 
 /**
- * RulesTab — Flow 3 of the admin sequence:
- * update filtering rules → apply to local lexicon → confirm applied.
+ * RulesPage \u2014 Filtering rules editor for the admin console.
+ *
+ * Manages three term categories (crisis, toxic, allow-list) and a dry-run tester.
+ * Unsaved edits are cached at module level so they survive navigation away and back.
+ * Wrapped by PageShell via AdminLayout \u2014 no own outer container needed.
+ *
+ * @param {{ onAuthError: () => void }} props
  */
-export default function RulesTab({ onAuthError }) {
-  const [lexicon, setLexicon] = useState({ crisis: [], toxic: [], allow: [] })
+export default function RulesPage({ onAuthError }) {
+  const [lexicon, setLexicon] = useState(cachedLexicon || { crisis: [], toxic: [], allow: [] })
   const [original, setOriginal] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!cachedLexicon)
   const [saving, setSaving] = useState(false)
-  const [toast, setToast] = useState('')
+  const [toast, setToast] = useState(null) // { message, variant }
   const [error, setError] = useState('')
 
-  // Dry-run tester
+  // Dry-run tester state
   const [testText, setTestText] = useState('')
   const [testResult, setTestResult] = useState(null)
   const [testing, setTesting] = useState(false)
 
+  // Persist unsaved edits to module-level cache on every change
+  const lexiconRef = useRef(lexicon)
   useEffect(() => {
-    (async () => {
+    lexiconRef.current = lexicon
+    cachedLexicon = lexicon
+  }, [lexicon])
+
+  // Fetch lexicon from API on mount (skip if we have cached edits)
+  useEffect(() => {
+    // If we restored from cache, still fetch the baseline to compute dirty state
+    ;(async () => {
       try {
         const data = await fetchLexicon()
         const next = {
@@ -128,8 +154,13 @@ export default function RulesTab({ onAuthError }) {
           toxic: data.toxic || [],
           allow: data.allow || [],
         }
-        setLexicon(next)
         setOriginal(JSON.stringify(next))
+
+        // Only overwrite component state with server data if no cached edits
+        if (!cachedLexicon) {
+          setLexicon(next)
+          cachedLexicon = next
+        }
       } catch (err) {
         if (err.status === 401) return onAuthError()
         setError(err.message)
@@ -149,8 +180,9 @@ export default function RulesTab({ onAuthError }) {
       const next = { crisis: saved.crisis, toxic: saved.toxic, allow: saved.allow }
       setLexicon(next)
       setOriginal(JSON.stringify(next))
-      setToast('Filtering rules applied to the live lexicon.')
-      setTimeout(() => setToast(''), 3000)
+      // Sync cache to the saved baseline
+      cachedLexicon = next
+      setToast({ message: 'Filtering rules applied to the live lexicon.', variant: 'success' })
     } catch (err) {
       if (err.status === 401) return onAuthError()
       setError(err.message)
@@ -174,16 +206,19 @@ export default function RulesTab({ onAuthError }) {
     }
   }
 
-  if (loading) return <p className="text-slate-500 text-sm">Loading filtering rules…</p>
+  if (loading) return <p className="text-slate-500 text-sm">Loading filtering rules\u2026</p>
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4 sm:gap-6">
+      {/* Toast notification */}
       {toast && (
-        <div className="bg-emerald-900/30 border border-emerald-700/40 rounded-xl px-4 py-2.5
-                        text-sm text-emerald-300">
-          ✓ {toast}
-        </div>
+        <Toast
+          message={toast.message}
+          variant={toast.variant}
+          onDismiss={() => setToast(null)}
+        />
       )}
+
       {error && (
         <div className="bg-orange-900/30 border border-orange-700/40 rounded-xl px-4 py-3
                         text-sm text-orange-300">
@@ -191,10 +226,11 @@ export default function RulesTab({ onAuthError }) {
         </div>
       )}
 
-      <div className="glass rounded-2xl px-4 py-3 text-xs text-slate-400 leading-relaxed">
+      {/* Intro description */}
+      <div className="glass rounded-2xl border border-white/5 px-3 sm:px-4 py-3 text-xs text-slate-400 leading-relaxed">
         These rules layer <strong className="text-slate-200">on top of</strong> the built-in
         English, Tagalog and Bicolano lists and the Perspective AI model. They apply
-        immediately to every new post — no restart needed.
+        immediately to every new post \u2014 no restart needed.
       </div>
 
       {/* Rule lists */}
@@ -217,15 +253,15 @@ export default function RulesTab({ onAuthError }) {
                      hover:from-violet-500 hover:to-indigo-500
                      disabled:opacity-40 disabled:cursor-not-allowed transition-all"
         >
-          {saving ? 'Applying…' : 'Apply rules'}
+          {saving ? 'Applying\u2026' : 'Apply rules'}
         </button>
         {dirty && (
           <span className="text-xs text-orange-300">Unsaved changes</span>
         )}
       </div>
 
-      {/* ── Dry-run tester ───────────────────────────────────────────────── */}
-      <section className="glass rounded-2xl p-4 flex flex-col gap-3">
+      {/* Dry-run tester */}
+      <section className="glass rounded-2xl border border-white/5 p-3 sm:p-4 flex flex-col gap-3">
         <div>
           <h3 className="text-sm font-semibold text-white">🧪 Test the filter</h3>
           <p className="text-xs text-slate-500 mt-1">
@@ -239,7 +275,7 @@ export default function RulesTab({ onAuthError }) {
             value={testText}
             onChange={(e) => setTestText(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleTest() } }}
-            placeholder="Type a message to evaluate…"
+            placeholder="Type a message to evaluate\u2026"
             className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2
                        text-slate-200 placeholder-slate-600 text-sm
                        focus:outline-none focus:border-violet-500/60
@@ -251,28 +287,63 @@ export default function RulesTab({ onAuthError }) {
             className="px-4 rounded-xl text-sm font-semibold text-white glass
                        hover:bg-white/10 disabled:opacity-40 transition-all"
           >
-            {testing ? '…' : 'Test'}
+            {testing ? '\u2026' : 'Test'}
           </button>
         </div>
 
         {testResult && (
-          <div className={`rounded-xl px-4 py-3 text-sm border flex flex-col gap-1
+          <div className={`rounded-xl px-4 py-3 text-sm border flex flex-col gap-2
             ${testResult.verdict === 'crisis'
               ? 'bg-violet-900/30 border-violet-700/40 text-violet-200'
               : testResult.verdict === 'toxic'
                 ? 'bg-red-900/30 border-red-700/40 text-red-200'
-                : 'bg-emerald-900/25 border-emerald-700/40 text-emerald-200'}`}>
+                : testResult.verdict === 'review'
+                  ? 'bg-amber-900/30 border-amber-700/40 text-amber-200'
+                  : 'bg-emerald-900/25 border-emerald-700/40 text-emerald-200'}`}>
+            {/* Verdict + layer */}
             <div className="flex items-center gap-2">
               <strong className="uppercase text-xs tracking-widest">
                 {testResult.verdict}
               </strong>
               <span className="text-xs opacity-70 font-mono">{testResult.layer}</span>
             </div>
+
             {testResult.reason && (
               <p className="text-xs opacity-80">{testResult.reason}</p>
             )}
+
+            {/* Matched term + lexicon source */}
+            {testResult.matchedTerm && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-slate-400">Matched:</span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md
+                                 bg-white/10 border border-white/10 text-xs font-mono">
+                  {testResult.matchedTerm}
+                </span>
+                {testResult.lexiconSource && (
+                  <span className="text-xs opacity-60 px-1.5 py-0.5 rounded
+                                   bg-white/5 border border-white/5">
+                    {testResult.lexiconSource}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Normalized text */}
+            {testResult.normalizedText && (
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-slate-400">Normalized:</span>
+                <code className="text-xs font-mono bg-black/30 rounded-lg px-2.5 py-1.5
+                                 border border-white/5 block break-all">
+                  {testResult.normalizedText}
+                </code>
+              </div>
+            )}
+
+            {/* Perspective API scores */}
             {testResult.scores && (
               <div className="flex flex-wrap gap-2 mt-1">
+                <span className="text-xs text-slate-400">Scores:</span>
                 {Object.entries(testResult.scores).map(([k, v]) => (
                   <span key={k} className="text-xs font-mono opacity-70">
                     {k.toLowerCase()}: {v.toFixed(2)}
