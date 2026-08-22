@@ -1,4 +1,4 @@
-import React from 'react'
+﻿import React from 'react'
 import { PLANETS } from '../../data/planets'
 import EmotionPlanet from './EmotionPlanet'
 import OrbitPath from './OrbitPath'
@@ -8,12 +8,14 @@ import UserAvatar from './UserAvatar'
 /**
  * StarSystem — composes the central star, the orbit rings, all emotion
  * planets, and the user's avatar into one scene group.
+ *
+ * @param {{ peerCount?: number }} props
  */
-export default function StarSystem() {
+export default function StarSystem({ peerCount = 0 }) {
   return (
     <group>
       {/* Central star (the "sun" of the AnonEmote system) */}
-      <CentralStar />
+      <CentralStar peerCount={peerCount} />
 
       {/* Orbit tracks — drawn first so planets render on top of them */}
       {PLANETS.map((planet) => (

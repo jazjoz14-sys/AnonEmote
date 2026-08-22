@@ -1,4 +1,4 @@
-import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+﻿import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
@@ -17,7 +17,7 @@ import { supabase } from '../lib/supabase'
 import { isHintDismissed, dismissHint, HINT_PLANET_PULSE } from '../lib/hintStore'
 import { PLANETS } from '../data/planets'
 
-// Scratch objects — allocated once, reused every frame
+// Scratch objects â€” allocated once, reused every frame
 const _desiredCamPos = new THREE.Vector3()
 const _desiredTarget = new THREE.Vector3()
 const _dir = new THREE.Vector3()
@@ -27,12 +27,12 @@ const _defaultTarget = new THREE.Vector3(0, 0, 0)
 /**
  * CameraRig
  *
- * Phase 1 — FLY-IN:
+ * Phase 1 â€” FLY-IN:
  *   OrbitControls is DISABLED. We manually set camera.position and
  *   camera.lookAt each frame until we arrive. On arrival we sync
  *   OrbitControls' internal spherical state and re-enable it.
  *
- * Phase 2 — FREE ORBIT:
+ * Phase 2 â€” FREE ORBIT:
  *   OrbitControls is ENABLED and owns camera.position.
  *   We only lerp OrbitControls.target toward the live planet position
  *   so the pivot follows the orbiting planet. User can drag/zoom freely.
@@ -56,28 +56,28 @@ function CameraRig({ controlsRef, modalOpen }) {
     const selectedPlanet = useAppStore.getState().selectedPlanet
     const currentId = selectedPlanet?.id ?? null
 
-    // ── Detect selection change ─────────────────────────────────────────────
+    // â”€â”€ Detect selection change â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (currentId !== lastSelectedId.current) {
       lastSelectedId.current = currentId
 
       if (currentId === null) {
-        // Deselected — fly back to overview
+        // Deselected â€” fly back to overview
         phase.current = 'returning'
         if (controlsRef.current) controlsRef.current.enabled = false
       } else {
-        // New planet selected — start fly-in
+        // New planet selected â€” start fly-in
         phase.current = 'flying'
         if (controlsRef.current) controlsRef.current.enabled = false
       }
     }
 
-    // ── Phase: returning to overview ────────────────────────────────────────
+    // â”€â”€ Phase: returning to overview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (phase.current === 'returning') {
       camera.position.lerp(_defaultCamPos, 0.04)
       camera.lookAt(_defaultTarget)
 
       if (camera.position.distanceTo(_defaultCamPos) < 1) {
-        // Arrived at overview — re-enable controls
+        // Arrived at overview â€” re-enable controls
         phase.current = 'idle'
         if (controlsRef.current) {
           controlsRef.current.target.copy(_defaultTarget)
@@ -88,16 +88,16 @@ function CameraRig({ controlsRef, modalOpen }) {
       return
     }
 
-    // ── Phase: idle (no planet, controls own the camera) ───────────────────
+    // â”€â”€ Phase: idle (no planet, controls own the camera) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (phase.current === 'idle') return
 
-    // ── Need live planet position for flying / tracking ─────────────────────
+    // â”€â”€ Need live planet position for flying / tracking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (!selectedPlanet) return
     const livePos = useAppStore.getState().planetPositions[selectedPlanet.id]
     if (!livePos) return
 
     // Compute desired camera position: pull back from planet along
-    // the planet→origin direction, lift up slightly
+    // the planetâ†’origin direction, lift up slightly
     _dir.set(livePos.x, 0, livePos.z).normalize()
     const pullBack = selectedPlanet.size * 4 + 10
     _desiredCamPos.set(
@@ -107,13 +107,13 @@ function CameraRig({ controlsRef, modalOpen }) {
     )
     _desiredTarget.set(livePos.x, livePos.y, livePos.z)
 
-    // ── Phase: flying in ────────────────────────────────────────────────────
+    // â”€â”€ Phase: flying in â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (phase.current === 'flying') {
       camera.position.lerp(_desiredCamPos, 0.06)
       camera.lookAt(_desiredTarget)
 
       if (camera.position.distanceTo(_desiredCamPos) < 1.2) {
-        // Arrived — sync OrbitControls internal state then re-enable
+        // Arrived â€” sync OrbitControls internal state then re-enable
         phase.current = 'tracking'
         if (controlsRef.current) {
           // Tell OrbitControls where the camera is NOW so it doesn't snap
@@ -125,7 +125,7 @@ function CameraRig({ controlsRef, modalOpen }) {
       return
     }
 
-    // ── Phase: tracking (free orbit, pivot follows planet) ──────────────────
+    // â”€â”€ Phase: tracking (free orbit, pivot follows planet) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (phase.current === 'tracking') {
       if (controlsRef.current) {
         // Keep camera locked on the moving planet by updating both the pivot
@@ -142,7 +142,7 @@ function CameraRig({ controlsRef, modalOpen }) {
 }
 
 /**
- * SpaceScreen — The main 3D navigable star system.
+ * SpaceScreen â€” The main 3D navigable star system.
  */
 /**
  * Surfaces WebGL context loss instead of letting the app freeze silently.
@@ -151,7 +151,7 @@ function CameraRig({ controlsRef, modalOpen }) {
 function ContextLossGuard({ onLost }) {
   const { gl } = useThree()
 
-  // One-time GPU report — tells us whether the browser is falling back to
+  // One-time GPU report â€” tells us whether the browser is falling back to
   // software rendering, which causes frequent context loss.
   useEffect(() => {
     try {
@@ -176,7 +176,7 @@ function ContextLossGuard({ onLost }) {
 
     const handleLost = (e) => {
       e.preventDefault()
-      console.warn('[AnonEmote] WebGL context lost — a page reload is required.')
+      console.warn('[AnonEmote] WebGL context lost â€” a page reload is required.')
       onLost?.()
     }
     const handleRestored = () => {
@@ -208,7 +208,7 @@ export default function SpaceScreen() {
   const [postsLoading, setPostsLoading] = useState(true)
   const onboardingActive = onboarding.active
 
-  // ─── Planet pulse hint (Req 6.2) ─────────────────────────────────────────
+  // â”€â”€â”€ Planet pulse hint (Req 6.2) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // On first Star_System entry per session, show a pulsing glow on the first
   // planet for 5 seconds. Dismissed on click or timeout.
   const [showPulseHint, setShowPulseHint] = useState(false)
@@ -244,7 +244,7 @@ export default function SpaceScreen() {
   // Onboarding overlay also disables planet interactions while active.
   const modalOpen = crisis.open || !!reportTarget || onboardingActive
 
-  // ─── Viewport Budget (mobile) ──────────────────────────────────────────────
+  // â”€â”€â”€ Viewport Budget (mobile) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Chrome budget: HUD (40px) + Nav (44px) = 84px max on mobile.
   // PlanetInfoPanel maxHeight is calculated so:
   //   1. It fits between HUD and Nav (viewport - 84 - safe insets)
@@ -279,7 +279,7 @@ export default function SpaceScreen() {
       maxHeight = availableSpace
     }
 
-    // Landscape cap: viewport height < 500px → cap at 50% viewport height
+    // Landscape cap: viewport height < 500px â†’ cap at 50% viewport height
     if (viewportHeight < 500) {
       const landscapeCap = viewportHeight * 0.5
       maxHeight = Math.min(maxHeight, landscapeCap)
@@ -288,7 +288,7 @@ export default function SpaceScreen() {
     return `${Math.round(maxHeight)}px`
   }, [isSmallScreen, viewportHeight])
 
-  // ─── Onboarding trigger for newly registered users ─────────────────────────
+  // â”€â”€â”€ Onboarding trigger for newly registered users â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // If the user hasn't completed onboarding yet (no onboarding_completed_at in
   // their metadata), start the onboarding flow. Returning users who have already
   // completed onboarding are skipped.
@@ -307,7 +307,7 @@ export default function SpaceScreen() {
           startOnboarding()
         }
       } catch (err) {
-        // Silently fail — onboarding is non-critical
+        // Silently fail â€” onboarding is non-critical
         console.warn('[SpaceScreen] Failed to check onboarding status:', err)
       }
     }
@@ -383,7 +383,7 @@ export default function SpaceScreen() {
     }
   }, [setPosts])
 
-  // ─── Keyboard navigation for 3D canvas (Req 19.8) ─────────────────────────
+  // â”€â”€â”€ Keyboard navigation for 3D canvas (Req 19.8) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Allows planet selection via Tab (cycle), Enter (select), Escape (exit).
   // This is an alternative path alongside PlanetNav's button-based navigation.
   const canvasWrapperRef = useRef(null)
@@ -422,12 +422,12 @@ export default function SpaceScreen() {
 
   return (
     <div className="relative w-full" style={{ height: isSmallScreen ? 'var(--app-height, 100dvh)' : '100%' }}>
-      {/* Canvas wrapper — keyboard-navigable for planet selection */}
+      {/* Canvas wrapper â€” keyboard-navigable for planet selection */}
       <div
         ref={canvasWrapperRef}
         tabIndex={0}
         role="application"
-        aria-label="3D star system — use Tab to cycle planets, Enter to select, Escape to exit"
+        aria-label="3D star system â€” use Tab to cycle planets, Enter to select, Escape to exit"
         onKeyDown={handleCanvasKeyDown}
         onBlur={handleCanvasBlur}
         className="relative w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-violet-500/60"
@@ -440,7 +440,7 @@ export default function SpaceScreen() {
           height: '100%',
           pointerEvents: modalOpen ? 'none' : 'auto',
         }}
-        // Cap pixel ratio — on high-DPI screens an uncapped dpr can allocate
+        // Cap pixel ratio â€” on high-DPI screens an uncapped dpr can allocate
         // several times more GPU memory than needed and trigger context loss.
         dpr={sceneConfig.dpr}
         // Soft shadows only on devices that can afford them
@@ -453,7 +453,7 @@ export default function SpaceScreen() {
         }}
         onPointerMissed={(e) => {
           if (modalOpen || postModalOpen) return
-          // Read fresh state — postModalOpen may have just been set by a button
+          // Read fresh state â€” postModalOpen may have just been set by a button
           // click on the info panel that also triggered this pointer-miss
           const state = useAppStore.getState()
           if (state.postModalOpen) return
@@ -470,7 +470,7 @@ export default function SpaceScreen() {
               than going pure black. */}
           {/* Lighting is star-dominant so each planet has a true day and night
               side, with the terminator sweeping around as it orbits.
-              Ambient is kept deliberately low — any significant ambient lights
+              Ambient is kept deliberately low â€” any significant ambient lights
               both hemispheres equally and destroys the day/night read. The
               night side stays visible via the material's emissive instead,
               which shows the planet's own colour rather than grey wash. */}
@@ -489,16 +489,16 @@ export default function SpaceScreen() {
           {/* Nebula skydome + flicker-free starfield, in the project palette */}
           <GalacticBackdrop starCount={sceneConfig.starCount} />
 
-          <StarSystem />
+          <StarSystem peerCount={peers.length} />
 
-          {/* Other users' avatars — rendered from Supabase Presence */}
+          {/* Other users' avatars â€” rendered from Supabase Presence */}
           <PeerAvatars peers={peers} />
 
           <CameraRig controlsRef={controlsRef} modalOpen={modalOpen} />
 
           <ContextLossGuard onLost={(lost = true) => setContextLost(lost)} />
 
-          {/* Post-processing — skipped on low-end devices */}
+          {/* Post-processing â€” skipped on low-end devices */}
           {sceneConfig.bloomEnabled && (
             <EffectComposer disableNormalPass multisampling={0}>
               <Bloom
@@ -532,7 +532,7 @@ export default function SpaceScreen() {
         </Suspense>
       </Canvas>
 
-        {/* Keyboard navigation focus indicator — shows which planet is highlighted
+        {/* Keyboard navigation focus indicator â€” shows which planet is highlighted
             while the user cycles through them with Tab */}
         {kbFocusedIndex !== null && PLANETS[kbFocusedIndex] && (
           <div
@@ -546,7 +546,7 @@ export default function SpaceScreen() {
             <span className="text-xs text-white tracking-wide">
               <span className="mr-1.5">{PLANETS[kbFocusedIndex].emoji}</span>
               <span className="text-violet-300 font-medium">{PLANETS[kbFocusedIndex].label}</span>
-              <span className="ml-2 text-slate-400">— press Enter to select</span>
+              <span className="ml-2 text-slate-400">â€” press Enter to select</span>
             </span>
           </div>
         )}
@@ -556,7 +556,7 @@ export default function SpaceScreen() {
       <PlanetNav showPulseHint={showPulseHint} onPlanetClick={handlePulseDismiss} />
       {selectedPlanet && <PlanetInfoPanel postsLoading={postsLoading} maxHeight={panelMaxHeight} />}
 
-      {/* Onboarding tutorial overlay — renders above the 3D scene as HTML */}
+      {/* Onboarding tutorial overlay â€” renders above the 3D scene as HTML */}
       <OnboardingOverlay />
 
       {/* Visible recovery prompt instead of a silently frozen scene */}
@@ -564,10 +564,10 @@ export default function SpaceScreen() {
         <div className="absolute inset-0 z-[200] flex items-center justify-center p-6"
              style={{ background: 'rgba(10,10,26,0.92)' }}>
           <div className="glass-dark rounded-3xl p-6 max-w-sm text-center flex flex-col gap-4">
-            <div className="text-4xl">🌌</div>
+            <div className="text-4xl">ðŸŒŒ</div>
             <h2 className="text-lg font-bold text-white">Lost the star system</h2>
             <p className="text-sm text-slate-400 leading-relaxed">
-              The 3D renderer lost its graphics context. Reloading restores it —
+              The 3D renderer lost its graphics context. Reloading restores it â€”
               your session and posts are unaffected.
             </p>
             <button

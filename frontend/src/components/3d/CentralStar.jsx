@@ -1,24 +1,216 @@
-import React, { useRef } from 'react'
+﻿import React, { useRef, useMemo, useState, useCallback } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
 import { sceneConfig } from '../../lib/device'
+import useAppStore from '../../store/useAppStore'
+import { PLANETS } from '../../data/planets'
 
 /**
  * CentralStar — the emotional "sun" of the AnonEmote system.
  *
- * This is the scene's primary light source and its only shadow caster. Because
- * it sits at the origin and the planets orbit around it, each planet is lit on
- * the side facing the star and falls into shadow on the far side, with the
- * terminator sweeping across as it orbits.
+ * Beyond being the scene's primary light source, it now serves as a living
+ * indicator of the community's emotional state:
+ *
+ *   1. Active User Count — floating text showing online peers
+ *   2. Aggregate Emotion Pulse — star color shifts based on dominant emotion
+ *   3. Click to View All Posts — clicking opens the combined feed
+ *   4. Particle Streams — energy lines flowing toward planets
+ *   5. Floating Text Ring — "AnonEmote" orbiting the star
+ *   6. "You Are Here" Beacon — user's avatar color reflected in the star
+ *   7. Daily Affirmation — inspirational message on hover
  */
-export default function CentralStar() {
+
+// ── Affirmation pool ─────────────────────────────────────────────────────────
+const AFFIRMATIONS = [
+  'You are not alone.',
+  'Your feelings matter.',
+  'It is okay to not be okay.',
+  'You belong here.',
+  'One step at a time.',
+  'Breathe. You are safe.',
+  'Your voice has power.',
+  'This too shall pass.',
+  'You are enough.',
+  'Be gentle with yourself.',
+  'Progress, not perfection.',
+  'You deserve kindness.',
+]
+
+/** Pick today's affirmation (changes once per calendar day). */
+function getDailyAffirmation() {
+  const dayIndex = Math.floor(Date.now() / 86400000) % AFFIRMATIONS.length
+  return AFFIRMATIONS[dayIndex]
+}
+
+// ── Emotion-to-color mapping ────────────────────────────────────────────────
+const EMOTION_COLORS = {
+  joy: new THREE.Color('#fde68a'),
+  vent: new THREE.Color('#93c5fd'),
+  advice: new THREE.Color('#6ee7b7'),
+  grief: new THREE.Color('#a5b4fc'),
+  anxiety: new THREE.Color('#f9a8d4'),
+  neutral: new THREE.Color('#cbd5e1'),
+  doodle: new THREE.Color('#f5f5f5'),
+}
+const DEFAULT_STAR_COLOR = new THREE.Color('#fff8e7')
+const DEFAULT_EMISSIVE = new THREE.Color('#fde68a')
+
+// Scratch objects (allocated once, reused every frame)
+const _lerpColor = new THREE.Color()
+const _lerpEmissive = new THREE.Color()
+
+/**
+ * Compute the dominant emotion from recent posts.
+ * Returns the planet_id with the most posts, or null if empty.
+ */
+function computeDominantEmotion(posts) {
+  if (!posts || posts.length === 0) return null
+
+  // Only consider posts from last 30 minutes for recency
+  const cutoff = Date.now() - 30 * 60 * 1000
+  const recent = posts.filter(p => new Date(p.created_at).getTime() > cutoff)
+  if (recent.length === 0) return null
+
+  const counts = {}
+  for (const post of recent) {
+    counts[post.planet_id] = (counts[post.planet_id] || 0) + 1
+  }
+
+  let max = 0
+  let dominant = null
+  for (const [id, count] of Object.entries(counts)) {
+    if (count > max) { max = count; dominant = id }
+  }
+  return dominant
+}
+
+/**
+ * EnergyStream — a single particle line flowing from the star toward a planet.
+ * Uses a simple tube that pulses along its length.
+ */
+function EnergyStream({ targetRadius, angle, color, speed = 1 }) {
+  const ref = useRef()
+  const materialRef = useRef()
+
+  // Build a curved path from origin toward the planet's orbit radius
+  const curve = useMemo(() => {
+    const endX = Math.cos(angle) * targetRadius * 0.7
+    const endZ = Math.sin(angle) * targetRadius * 0.7
+    return new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(endX * 0.3, 1.5, endZ * 0.3),
+      new THREE.Vector3(endX * 0.6, 0.5, endZ * 0.6),
+      new THREE.Vector3(endX, 0, endZ),
+    ])
+  }, [angle, targetRadius])
+
+  const geometry = useMemo(() => {
+    return new THREE.TubeGeometry(curve, 20, 0.06, 4, false)
+  }, [curve])
+
+  useFrame((state) => {
+    if (materialRef.current) {
+      const t = state.clock.elapsedTime * speed
+      materialRef.current.opacity = 0.15 + Math.sin(t) * 0.1
+      materialRef.current.dashOffset = -t * 0.5
+    }
+  })
+
+  return (
+    <mesh ref={ref} geometry={geometry}>
+      <meshBasicMaterial
+        ref={materialRef}
+        color={color}
+        transparent
+        opacity={0.2}
+        depthWrite={false}
+      />
+    </mesh>
+  )
+}
+
+/**
+ * TextRing — "AnonEmote" text orbiting the star like Saturn's rings.
+ */
+function TextRing() {
+  const groupRef = useRef()
+
+  useFrame((state) => {
+    if (groupRef.current) {
+      groupRef.current.rotation.y = state.clock.elapsedTime * 0.06
+    }
+  })
+
+  return (
+    <group ref={groupRef} rotation={[Math.PI * 0.15, 0, 0]}>
+      {/* Place text at 4 cardinal points around the ring */}
+      {[0, Math.PI / 2, Math.PI, Math.PI * 1.5].map((angle, i) => (
+        <group key={i} position={[Math.cos(angle) * 8.5, 0, Math.sin(angle) * 8.5]}>
+          <Billboard follow lockX={false} lockY={false} lockZ={false}>
+            <Text
+              fontSize={0.5}
+              color="#fde68a"
+              anchorX="center"
+              anchorY="middle"
+              fillOpacity={0.35}
+              font={undefined}
+            >
+              {i % 2 === 0 ? 'AnonEmote' : '✦'}
+            </Text>
+          </Billboard>
+        </group>
+      ))}
+    </group>
+  )
+}
+
+export default function CentralStar({ peerCount = 0 }) {
   const meshRef = useRef()
   const glowRef = useRef()
   const coronaRef = useRef()
+  const coreMatRef = useRef()
 
+  const [hovered, setHovered] = useState(false)
+  const affirmation = useMemo(() => getDailyAffirmation(), [])
+
+  // ── Aggregate emotion pulse ────────────────────────────────────────────────
+  // Read posts from store to determine dominant emotion
+  const dominantRef = useRef(null)
+  const targetColorRef = useRef(DEFAULT_STAR_COLOR.clone())
+  const targetEmissiveRef = useRef(DEFAULT_EMISSIVE.clone())
+
+  // ── User's avatar color reflected in star ──────────────────────────────────
+  const avatar = useAppStore((s) => s.avatar)
+  const userAuraColor = useMemo(() => {
+    if (avatar?.auraColor) return new THREE.Color(avatar.auraColor)
+    return null
+  }, [avatar?.auraColor])
+
+  // ── Click handler — select "all" view ──────────────────────────────────────
+  const handleClick = useCallback((e) => {
+    e.stopPropagation()
+    // Clicking the star deselects any planet (returns to overview)
+    // Could also open an "all posts" view — for now, deselect
+    const store = useAppStore.getState()
+    store.setSelectedPlanet(null)
+  }, [])
+
+  // ── Energy streams toward planets ──────────────────────────────────────────
+  const streams = useMemo(() => {
+    return PLANETS.map((planet, i) => ({
+      targetRadius: planet.orbitRadius,
+      angle: (i / PLANETS.length) * Math.PI * 2,
+      color: planet.color,
+      speed: 0.5 + Math.random() * 0.5,
+    }))
+  }, [])
+
+  // ── Animation loop ─────────────────────────────────────────────────────────
   useFrame((state) => {
     const t = state.clock.elapsedTime
 
+    // Core rotation and breathing
     if (meshRef.current) {
       meshRef.current.rotation.y = t * 0.1
       meshRef.current.rotation.x = t * 0.05
@@ -34,14 +226,44 @@ export default function CentralStar() {
       coronaRef.current.rotation.z = t * 0.04
       coronaRef.current.material.opacity = 0.05 + Math.sin(t * 0.9) * 0.015
     }
+
+    // ── Aggregate emotion color shift ────────────────────────────────────────
+    const posts = useAppStore.getState().posts
+    const dominant = computeDominantEmotion(posts)
+
+    if (dominant !== dominantRef.current) {
+      dominantRef.current = dominant
+      if (dominant && EMOTION_COLORS[dominant]) {
+        // Blend 30% toward the emotion color, keeping the star warm
+        targetColorRef.current.copy(DEFAULT_STAR_COLOR).lerp(EMOTION_COLORS[dominant], 0.3)
+        targetEmissiveRef.current.copy(DEFAULT_EMISSIVE).lerp(EMOTION_COLORS[dominant], 0.4)
+      } else {
+        targetColorRef.current.copy(DEFAULT_STAR_COLOR)
+        targetEmissiveRef.current.copy(DEFAULT_EMISSIVE)
+      }
+    }
+
+    // Smoothly transition the core material color
+    if (coreMatRef.current) {
+      coreMatRef.current.color.lerp(targetColorRef.current, 0.02)
+      coreMatRef.current.emissive.lerp(targetEmissiveRef.current, 0.02)
+
+      // "You are here" beacon — mix 10% of user's aura color into emissive
+      if (userAuraColor) {
+        _lerpColor.copy(coreMatRef.current.emissive)
+        _lerpColor.lerp(userAuraColor, 0.08 + Math.sin(t * 2) * 0.03)
+        coreMatRef.current.emissive.copy(_lerpColor)
+      }
+
+      // Hover glow boost
+      const targetIntensity = hovered ? 3.0 : 2.2
+      coreMatRef.current.emissiveIntensity += (targetIntensity - coreMatRef.current.emissiveIntensity) * 0.05
+    }
   })
 
   return (
     <group position={[0, 0, 0]}>
-      {/* ── Light source ──────────────────────────────────────────────────
-          A shadow-casting point light. Point lights render six shadow faces,
-          so the map is kept modest to stay cheap. normalBias prevents the
-          lumpy clay surfaces from self-shadowing into stripes (shadow acne). */}
+      {/* ── Light source ─────────────────────────────────────────────────── */}
       <pointLight
         color="#fff4dd"
         intensity={14}
@@ -57,10 +279,16 @@ export default function CentralStar() {
         shadow-radius={4}
       />
 
-      {/* Core — larger so it reads as a proper star relative to the planets */}
-      <mesh ref={meshRef}>
+      {/* ── Interactive core ──────────────────────────────────────────────── */}
+      <mesh
+        ref={meshRef}
+        onClick={handleClick}
+        onPointerEnter={() => setHovered(true)}
+        onPointerLeave={() => setHovered(false)}
+      >
         <icosahedronGeometry args={[5.5, 4]} />
         <meshStandardMaterial
+          ref={coreMatRef}
           color="#fff8e7"
           emissive="#fde68a"
           emissiveIntensity={2.2}
@@ -70,7 +298,7 @@ export default function CentralStar() {
         />
       </mesh>
 
-      {/* Inner glow shell */}
+      {/* ── Inner glow shell ─────────────────────────────────────────────── */}
       <mesh ref={glowRef}>
         <sphereGeometry args={[7.2, 24, 24]} />
         <meshBasicMaterial
@@ -82,7 +310,7 @@ export default function CentralStar() {
         />
       </mesh>
 
-      {/* Wide outer corona */}
+      {/* ── Wide outer corona ────────────────────────────────────────────── */}
       <mesh ref={coronaRef}>
         <sphereGeometry args={[10, 20, 20]} />
         <meshBasicMaterial
@@ -93,6 +321,54 @@ export default function CentralStar() {
           side={THREE.BackSide}
         />
       </mesh>
+
+      {/* ── Feature 1: Active user count ─────────────────────────────────── */}
+      {peerCount > 0 && (
+        <Billboard position={[0, 8.5, 0]} follow lockX={false} lockY={false}>
+          <Text
+            fontSize={0.8}
+            color="#e2e8f0"
+            anchorX="center"
+            anchorY="middle"
+            fillOpacity={0.85}
+            font={undefined}
+          >
+            {`${peerCount + 1} online`}
+          </Text>
+        </Billboard>
+      )}
+
+      {/* ── Feature 5: Floating text ring ────────────────────────────────── */}
+      <TextRing />
+
+      {/* ── Feature 7: Daily affirmation (shown on hover) ────────────────── */}
+      {hovered && (
+        <Billboard position={[0, -8, 0]} follow lockX={false} lockY={false}>
+          <Text
+            fontSize={0.55}
+            color="#fde68a"
+            anchorX="center"
+            anchorY="middle"
+            fillOpacity={0.9}
+            maxWidth={12}
+            textAlign="center"
+            font={undefined}
+          >
+            {affirmation}
+          </Text>
+        </Billboard>
+      )}
+
+      {/* ── Feature 4: Energy streams toward planets ─────────────────────── */}
+      {sceneConfig.bloomEnabled && streams.map((stream, i) => (
+        <EnergyStream
+          key={i}
+          targetRadius={stream.targetRadius}
+          angle={stream.angle}
+          color={stream.color}
+          speed={stream.speed}
+        />
+      ))}
     </group>
   )
 }
