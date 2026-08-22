@@ -11,6 +11,7 @@ export const Z = {
   POST_MODAL: 50,
   DOODLE_MODAL: 50,
   AUTH_PROMPT: 50,
+  SETTINGS_PANEL: 55, // Above HUD (z-20) and post modals (50), below report/crisis modals
   CONFIRM_DIALOG: 60,
   REPORT_MODAL: 90,
   CRISIS_MODAL: 100,

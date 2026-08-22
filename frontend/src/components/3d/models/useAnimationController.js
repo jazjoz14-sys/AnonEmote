@@ -16,7 +16,7 @@
 import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { qualityTier } from './tierConfig.js'
+import { getCurrentTier } from './tierConfig.js'
 
 /**
  * Applies programmatic and/or clip-based animation to a mesh.
@@ -115,7 +115,7 @@ export function useAnimationController(meshRef, config = {}) {
 
     const elapsed = elapsedRef.current
     const frameCount = frameCountRef.current
-    const isLowTier = qualityTier === 'low'
+    const isLowTier = getCurrentTier() === 'low'
 
     // --- Programmatic animation ---
     if (effectiveMode === 'programmatic' || effectiveMode === 'blended') {

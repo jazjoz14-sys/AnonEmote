@@ -3,6 +3,7 @@ import useAppStore from '../../store/useAppStore'
 import { useIsSmallScreen } from '../../lib/device'
 import { useOrientation } from '../../lib/viewport'
 import PrivateNotesPanel from './PrivateNotesPanel'
+import SettingsPanel from './SettingsPanel'
 
 /**
  * HUD — minimal overlay on the SpaceScreen.
@@ -24,6 +25,7 @@ import PrivateNotesPanel from './PrivateNotesPanel'
 export default function HUD({ peerCount = 0 }) {
   const { setPhase, privateNotes, onboarding, startOnboarding, isAuthenticated } = useAppStore()
   const [notesOpen, setNotesOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const isMobile = useIsSmallScreen()
   const { isLandscape } = useOrientation()
 
@@ -137,8 +139,39 @@ export default function HUD({ peerCount = 0 }) {
           )}
         </div>
 
-        {/* Right: help button for onboarding re-access */}
-        <div className={`flex items-center ${isMobile ? '' : 'w-16 justify-end'}`}>
+        {/* Right: settings gear + help button */}
+        <div className={`flex items-center gap-2`}>
+          {/* Gear icon — opens Graphics Settings panel */}
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className={`relative rounded-full uppercase tracking-[0.15em]
+              text-white border border-white/30
+              hover:text-white hover:bg-white/[0.05] transition-all duration-200
+              focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70
+              flex items-center justify-center
+              ${isMobile
+                ? 'w-7 h-7 text-[11px]'
+                : 'w-8 h-8 text-sm'
+              }
+            `}
+            aria-label="Graphics settings"
+            title="Graphics settings"
+          >
+            {/* Invisible tap target extender for mobile (44×44px) */}
+            {isMobile && (
+              <span
+                className="absolute inset-0 -m-2"
+                style={{ minWidth: '44px', minHeight: '44px' }}
+                aria-hidden="true"
+              />
+            )}
+            {/* Gear icon SVG */}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
+
           {!onboarding.active && (
             <button
               onClick={() => startOnboarding()}
@@ -171,6 +204,9 @@ export default function HUD({ peerCount = 0 }) {
 
       {/* Private notes panel */}
       {notesOpen && <PrivateNotesPanel onClose={() => setNotesOpen(false)} />}
+
+      {/* Graphics settings panel */}
+      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
   )
 }

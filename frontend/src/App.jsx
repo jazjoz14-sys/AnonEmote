@@ -34,7 +34,7 @@ export default function App() {
   const isAdmin = useIsAdminRoute()
 
   const {
-    phase, initSession, initAuth, loadPrivateNotes,
+    phase, initSession, initAuth, initGraphics, loadPrivateNotes,
     crisis, postModalOpen, reportTarget, selectedPlanet,
     setPostModalOpen, setSelectedPlanet, isAuthenticated,
   } = useAppStore()
@@ -43,12 +43,13 @@ export default function App() {
   const [authPromptOpen, setAuthPromptOpen] = useState(false)
   const [authPlanetContext, setAuthPlanetContext] = useState(null)
 
-  // Initialize auth listener + anonymous session on mount
+  // Initialize auth listener + anonymous session + graphics settings on mount
   useEffect(() => {
     initAuth()
     initSession()
+    initGraphics()
     loadPrivateNotes()
-  }, [initAuth, initSession, loadPrivateNotes])
+  }, [initAuth, initSession, initGraphics, loadPrivateNotes])
 
   // Auto-open post modal when a planet is selected (only for authenticated users)
   // For guests, show the AuthPromptModal instead

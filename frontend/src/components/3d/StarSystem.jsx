@@ -8,14 +8,12 @@ import UserAvatar from './UserAvatar'
 /**
  * StarSystem — composes the central star, the orbit rings, all emotion
  * planets, and the user's avatar into one scene group.
- *
- * @param {{ peerCount?: number }} props
  */
-export default function StarSystem({ peerCount = 0 }) {
+export default function StarSystem() {
   return (
     <group>
       {/* Central star (the "sun" of the AnonEmote system) */}
-      <CentralStar peerCount={peerCount} />
+      <CentralStar />
 
       {/* Orbit tracks — drawn first so planets render on top of them */}
       {PLANETS.map((planet) => (

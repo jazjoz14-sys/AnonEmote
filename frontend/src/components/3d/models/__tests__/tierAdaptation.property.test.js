@@ -21,6 +21,11 @@ vi.mock('../../../../lib/device.js', () => ({
   qualityTier: 'high',
 }))
 
+// Mock the store to prevent graphicsSlice initialization from failing
+vi.mock('../../../../store/useAppStore.js', () => ({
+  default: { getState: () => ({ activePreset: 'high' }) },
+}))
+
 import { adaptMaterials } from '../tierConfig.js'
 
 /**

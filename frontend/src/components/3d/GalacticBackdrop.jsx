@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react'
+import React, { useMemo, useRef, useState, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
@@ -182,12 +182,20 @@ function makeStarTexture() {
 function StarField({ count = 3500 }) {
   const groupRef = useRef()
 
+  // Debounce star count changes at 300ms so rapid slider drags don't
+  // regenerate geometry on every intermediate value (Requirement 6.2).
+  const [debouncedCount, setDebouncedCount] = useState(count)
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedCount(count), 300)
+    return () => clearTimeout(timer)
+  }, [count])
+
   const sprite = useMemo(() => makeStarTexture(), [])
 
   const { positions, colors, sizes } = useMemo(() => {
-    const positions = new Float32Array(count * 3)
-    const colors = new Float32Array(count * 3)
-    const sizes = new Float32Array(count)
+    const positions = new Float32Array(debouncedCount * 3)
+    const colors = new Float32Array(debouncedCount * 3)
+    const sizes = new Float32Array(debouncedCount)
 
     // Star tints kept within the project palette
     const palette = [
@@ -198,7 +206,7 @@ function StarField({ count = 3500 }) {
       new THREE.Color('#fbcfe8'), // pale pink
     ]
 
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < debouncedCount; i++) {
       // Uniform distribution on a spherical shell
       const u = Math.random()
       const v = Math.random()
@@ -231,7 +239,7 @@ function StarField({ count = 3500 }) {
     }
 
     return { positions, colors, sizes }
-  }, [count])
+  }, [debouncedCount])
 
   // Extremely slow rotation only — no opacity animation anywhere
   useFrame((_, delta) => {

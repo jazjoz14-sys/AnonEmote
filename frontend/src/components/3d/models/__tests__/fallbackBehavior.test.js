@@ -16,7 +16,7 @@ vi.mock('three/examples/jsm/loaders/GLTFLoader.js', () => {
 })
 
 vi.mock('../tierConfig.js', () => ({
-  qualityTier: 'high',
+  getCurrentTier: () => 'high',
   adaptMaterials: vi.fn(),
   TIER_MATERIAL_CONFIG: {
     low: { useTextures: false, flatColorFallback: true },

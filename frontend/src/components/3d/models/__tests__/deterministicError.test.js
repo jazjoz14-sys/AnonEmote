@@ -17,7 +17,7 @@ vi.mock('three/examples/jsm/loaders/GLTFLoader.js', () => ({
 // Mock tierConfig to avoid device detection issues in test env
 vi.mock('../tierConfig.js', () => ({
   adaptMaterials: vi.fn(),
-  qualityTier: 'medium',
+  getCurrentTier: () => 'medium',
 }))
 
 // Mock modelPaths to return predictable paths

@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { DEFAULT_AVATAR } from '../data/avatarOptions'
 import { supabase } from '../lib/supabase'
 import { loadState, saveState, clearState } from '../lib/persistence'
+import { createGraphicsSlice } from './graphicsSlice'
 
 /**
  * Global Zustand store for AnonEmote.
@@ -361,6 +362,11 @@ const useAppStore = create((set, get) => ({
 
     clearState(authUser.id)
   },
+
+  // ── Graphics Settings (reactive quality tier overrides) ───────────────────
+  // Slice manages bloom, decorations, star count, DPR, shadows, planet detail.
+  // Replaces static sceneConfig imports with a reactive, user-controllable store.
+  ...createGraphicsSlice(set, get),
 }))
 
 export default useAppStore

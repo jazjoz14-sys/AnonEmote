@@ -2,7 +2,7 @@
 import { useFrame } from '@react-three/fiber'
 import { Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
-import { sceneConfig } from '../../lib/device'
+import { useGraphicsConfig } from '../../hooks/useGraphicsConfig'
 import useAppStore from '../../store/useAppStore'
 
 /**
@@ -11,11 +11,10 @@ import useAppStore from '../../store/useAppStore'
  * Beyond being the scene's primary light source, it now serves as a living
  * indicator of the community's emotional state:
  *
- *   1. Active User Count — floating text showing online peers
- *   2. Aggregate Emotion Pulse — star color shifts based on dominant emotion
- *   3. Click to deselect planet (return to overview)
- *   4. "You Are Here" Beacon — user's avatar color reflected in the star
- *   5. Daily Affirmation — inspirational message on hover
+ *   1. Aggregate Emotion Pulse — star color shifts based on dominant emotion
+ *   2. Click to deselect planet (return to overview)
+ *   3. "You Are Here" Beacon — user's avatar color reflected in the star
+ *   4. Daily Affirmation — inspirational message on hover
  */
 
 // ── Affirmation pool ─────────────────────────────────────────────────────────
@@ -81,7 +80,7 @@ function computeDominantEmotion(posts) {
   return dominant
 }
 
-export default function CentralStar({ peerCount = 0 }) {
+export default function CentralStar() {
   const meshRef = useRef()
   const glowRef = useRef()
   const coronaRef = useRef()
@@ -89,6 +88,7 @@ export default function CentralStar({ peerCount = 0 }) {
 
   const [hovered, setHovered] = useState(false)
   const affirmation = useMemo(() => getDailyAffirmation(), [])
+  const config = useGraphicsConfig()
 
   // ── Aggregate emotion pulse ────────────────────────────────────────────────
   const dominantRef = useRef(null)
@@ -172,9 +172,9 @@ export default function CentralStar({ peerCount = 0 }) {
         intensity={14}
         distance={260}
         decay={1.0}
-        castShadow={sceneConfig.shadowMapSize > 0}
-        shadow-mapSize-width={sceneConfig.shadowMapSize || 512}
-        shadow-mapSize-height={sceneConfig.shadowMapSize || 512}
+        castShadow={config.shadowMapSize > 0}
+        shadow-mapSize-width={config.shadowMapSize || 512}
+        shadow-mapSize-height={config.shadowMapSize || 512}
         shadow-camera-near={0.8}
         shadow-camera-far={140}
         shadow-bias={-0.0008}
@@ -224,22 +224,6 @@ export default function CentralStar({ peerCount = 0 }) {
           side={THREE.BackSide}
         />
       </mesh>
-
-      {/* ── Feature 1: Active user count ─────────────────────────────────── */}
-      {peerCount > 0 && (
-        <Billboard position={[0, 8.5, 0]} follow lockX={false} lockY={false}>
-          <Text
-            fontSize={0.8}
-            color="#e2e8f0"
-            anchorX="center"
-            anchorY="middle"
-            fillOpacity={0.85}
-            font={undefined}
-          >
-            {`${peerCount + 1} online`}
-          </Text>
-        </Billboard>
-      )}
 
       {/* ── Feature 5: Daily affirmation (shown on hover) ────────────────── */}
       {hovered && (

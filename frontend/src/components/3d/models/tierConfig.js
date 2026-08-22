@@ -10,7 +10,8 @@
  */
 
 import * as THREE from 'three'
-import { qualityTier } from '../../../lib/device.js'
+import { qualityTier as staticTier } from '../../../lib/device.js'
+import useAppStore from '../../../store/useAppStore.js'
 
 /**
  * Material override rules per quality tier.
@@ -89,7 +90,24 @@ export function adaptMaterials(scene, tier, fallbackColor) {
 }
 
 /**
- * The current device's quality tier, re-exported for convenience.
- * @type {'low' | 'medium' | 'high'}
+ * Get the current effective quality tier from the reactive graphics store.
+ *
+ * Reads `activePreset` from the Zustand store snapshot:
+ * - If the preset is a named tier ('low', 'medium', 'high'), returns it directly.
+ * - If 'custom' (user modified individual settings), falls back to the static
+ *   auto-detected `qualityTier` from device.js — this represents the device's
+ *   baseline capability and determines material-level decisions (e.g., texture stripping).
+ *
+ * Uses `getState()` (non-reactive) so it can safely be called inside useFrame,
+ * useEffect, event handlers, and other non-hook contexts.
+ *
+ * @returns {'low' | 'medium' | 'high'}
  */
-export { qualityTier }
+export function getCurrentTier() {
+  const preset = useAppStore.getState().activePreset
+  if (preset === 'low' || preset === 'medium' || preset === 'high') {
+    return preset
+  }
+  // 'custom' preset: use the device's auto-detected tier for material decisions
+  return staticTier
+}

@@ -13,7 +13,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { getModelPath } from './modelPaths.js'
-import { adaptMaterials, qualityTier } from './tierConfig.js'
+import { adaptMaterials, getCurrentTier } from './tierConfig.js'
 
 /** @type {GLTFLoader} Shared loader instance — avoids creating one per hook call */
 const loader = new GLTFLoader()
@@ -187,10 +187,11 @@ export function useModelLoader(modelId, category, options = {}) {
         const clonedScene = gltf.scene.clone(true)
 
         // Apply quality tier material adaptation
-        adaptMaterials(clonedScene, qualityTier, fallbackColor)
+        const currentTier = getCurrentTier()
+        adaptMaterials(clonedScene, currentTier, fallbackColor)
 
         // On low tier, enforce triangle budget
-        if (qualityTier === 'low') {
+        if (currentTier === 'low') {
           enforceTriangleBudget(clonedScene, category)
         }
 

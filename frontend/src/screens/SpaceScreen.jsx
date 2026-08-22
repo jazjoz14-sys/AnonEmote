@@ -8,7 +8,9 @@ import StarSystem from '../components/3d/StarSystem'
 import GalacticBackdrop from '../components/3d/GalacticBackdrop'
 import PeerAvatars from '../components/3d/PeerAvatars'
 import usePresence from '../hooks/usePresence'
-import { sceneConfig, useIsSmallScreen, useViewportSize } from '../lib/device'
+import { useIsSmallScreen, useViewportSize } from '../lib/device'
+import { useGraphicsConfig } from '../hooks/useGraphicsConfig'
+import { useStabilityTracker } from '../hooks/useStabilityTracker'
 import HUD from '../components/ui/HUD'
 import PlanetNav from '../components/ui/PlanetNav'
 import PlanetInfoPanel from '../components/ui/PlanetInfoPanel'
@@ -142,6 +144,17 @@ function CameraRig({ controlsRef, modalOpen }) {
 }
 
 /**
+ * StabilityTracker — thin wrapper to call useStabilityTracker inside the Canvas.
+ * Keeps ContextLossGuard separate for the general UI banner; this handles
+ * the graphics-settings-specific auto-revert logic.
+ * @see Requirements 7.5, 7.6
+ */
+function StabilityTracker() {
+  useStabilityTracker()
+  return null
+}
+
+/**
  * SpaceScreen â€” The main 3D navigable star system.
  */
 /**
@@ -201,6 +214,7 @@ export default function SpaceScreen() {
     crisis, reportTarget, postModalOpen,
     onboarding, startOnboarding,
   } = useAppStore()
+  const config = useGraphicsConfig()
   const isSmallScreen = useIsSmallScreen()
   const { height: viewportHeight } = useViewportSize()
   const controlsRef = useRef()
@@ -442,9 +456,9 @@ export default function SpaceScreen() {
         }}
         // Cap pixel ratio â€” on high-DPI screens an uncapped dpr can allocate
         // several times more GPU memory than needed and trigger context loss.
-        dpr={sceneConfig.dpr}
+        dpr={config.dpr}
         // Soft shadows only on devices that can afford them
-        shadows={sceneConfig.shadowMapSize > 0 ? { type: THREE.PCFSoftShadowMap } : false}
+        shadows={config.shadowMapSize > 0 ? { type: THREE.PCFSoftShadowMap } : false}
         gl={{
           antialias: true,
           powerPreference: 'high-performance',
@@ -487,9 +501,9 @@ export default function SpaceScreen() {
           <pointLight position={[-90, -30, 70]} intensity={0.22} color="#60a5fa" />
 
           {/* Nebula skydome + flicker-free starfield, in the project palette */}
-          <GalacticBackdrop starCount={sceneConfig.starCount} />
+          <GalacticBackdrop starCount={config.starCount} />
 
-          <StarSystem peerCount={peers.length} />
+          <StarSystem />
 
           {/* Other users' avatars â€” rendered from Supabase Presence */}
           <PeerAvatars peers={peers} />
@@ -497,9 +511,10 @@ export default function SpaceScreen() {
           <CameraRig controlsRef={controlsRef} modalOpen={modalOpen} />
 
           <ContextLossGuard onLost={(lost = true) => setContextLost(lost)} />
+          <StabilityTracker />
 
           {/* Post-processing â€” skipped on low-end devices */}
-          {sceneConfig.bloomEnabled && (
+          {config.bloomEnabled && (
             <EffectComposer disableNormalPass multisampling={0}>
               <Bloom
                 intensity={0.9}

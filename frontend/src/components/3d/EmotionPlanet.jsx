@@ -6,7 +6,7 @@ import useAppStore from '../../store/useAppStore'
 import PlanetDecor from './PlanetDecor'
 import DoodlePlanetSkin from './DoodlePlanetSkin'
 import { CLAY, makeClayBlob } from './clay'
-import { sceneConfig } from '../../lib/device'
+import { useGraphicsConfig } from '../../hooks/useGraphicsConfig'
 import { useModelLoader } from './models/useModelLoader.js'
 import { useAnimationController } from './models/useAnimationController.js'
 import PlanetGLB from './models/PlanetGLB.jsx'
@@ -30,6 +30,9 @@ export default function EmotionPlanet({ planet }) {
     setSelectedPlanet, selectedPlanet, posts,
     crisis, reportTarget,
   } = useAppStore()
+
+  // Reactive graphics config — re-renders only when a setting value changes
+  const config = useGraphicsConfig()
   const isSelected = selectedPlanet?.id === planet.id
 
   // Hide 3D HTML overlays behind fully blocking dialogs. The broadcast
@@ -46,8 +49,8 @@ export default function EmotionPlanet({ planet }) {
   // Used as fallback when GLB fails to load or while loading (error state)
   const clayGeo = useMemo(() => {
     const seed = planet.id.charCodeAt(0) + planet.id.length * 13
-    return makeClayBlob(planet.size, sceneConfig.planetDetail, 0.055, seed)
-  }, [planet.id, planet.size])
+    return makeClayBlob(planet.size, config.planetDetail, 0.055, seed)
+  }, [planet.id, planet.size, config.planetDetail])
 
   // --- GLB model loading (disabled for performance — using procedural fallback) ---
   // TODO: Re-enable when GLB models are optimized for this GPU
@@ -219,7 +222,7 @@ export default function EmotionPlanet({ planet }) {
 
       {/* Emotion-specific clay props — disabled on low-end devices to
           preserve framerate and avoid context loss */}
-      {sceneConfig.decorEnabled && <PlanetDecor planet={planet} />}
+      {config.decorEnabled && <PlanetDecor planet={planet} />}
 
       {/* Doodle planet: if GLB loaded use hybrid renderer, else current skin */}
       {planet.id === 'doodle' && (
