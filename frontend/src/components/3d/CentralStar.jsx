@@ -4,7 +4,6 @@ import { Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
 import { sceneConfig } from '../../lib/device'
 import useAppStore from '../../store/useAppStore'
-import { PLANETS } from '../../data/planets'
 
 /**
  * CentralStar — the emotional "sun" of the AnonEmote system.
@@ -14,11 +13,9 @@ import { PLANETS } from '../../data/planets'
  *
  *   1. Active User Count — floating text showing online peers
  *   2. Aggregate Emotion Pulse — star color shifts based on dominant emotion
- *   3. Click to View All Posts — clicking opens the combined feed
- *   4. Particle Streams — energy lines flowing toward planets
- *   5. Floating Text Ring — "AnonEmote" orbiting the star
- *   6. "You Are Here" Beacon — user's avatar color reflected in the star
- *   7. Daily Affirmation — inspirational message on hover
+ *   3. Click to deselect planet (return to overview)
+ *   4. "You Are Here" Beacon — user's avatar color reflected in the star
+ *   5. Daily Affirmation — inspirational message on hover
  */
 
 // ── Affirmation pool ─────────────────────────────────────────────────────────
@@ -58,7 +55,6 @@ const DEFAULT_EMISSIVE = new THREE.Color('#fde68a')
 
 // Scratch objects (allocated once, reused every frame)
 const _lerpColor = new THREE.Color()
-const _lerpEmissive = new THREE.Color()
 
 /**
  * Compute the dominant emotion from recent posts.
@@ -85,86 +81,6 @@ function computeDominantEmotion(posts) {
   return dominant
 }
 
-/**
- * EnergyStream — a single particle line flowing from the star toward a planet.
- * Uses a simple tube that pulses along its length.
- */
-function EnergyStream({ targetRadius, angle, color, speed = 1 }) {
-  const ref = useRef()
-  const materialRef = useRef()
-
-  // Build a curved path from origin toward the planet's orbit radius
-  const curve = useMemo(() => {
-    const endX = Math.cos(angle) * targetRadius * 0.7
-    const endZ = Math.sin(angle) * targetRadius * 0.7
-    return new THREE.CatmullRomCurve3([
-      new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(endX * 0.3, 1.5, endZ * 0.3),
-      new THREE.Vector3(endX * 0.6, 0.5, endZ * 0.6),
-      new THREE.Vector3(endX, 0, endZ),
-    ])
-  }, [angle, targetRadius])
-
-  const geometry = useMemo(() => {
-    return new THREE.TubeGeometry(curve, 20, 0.06, 4, false)
-  }, [curve])
-
-  useFrame((state) => {
-    if (materialRef.current) {
-      const t = state.clock.elapsedTime * speed
-      materialRef.current.opacity = 0.15 + Math.sin(t) * 0.1
-      materialRef.current.dashOffset = -t * 0.5
-    }
-  })
-
-  return (
-    <mesh ref={ref} geometry={geometry}>
-      <meshBasicMaterial
-        ref={materialRef}
-        color={color}
-        transparent
-        opacity={0.2}
-        depthWrite={false}
-      />
-    </mesh>
-  )
-}
-
-/**
- * TextRing — "AnonEmote" text orbiting the star like Saturn's rings.
- */
-function TextRing() {
-  const groupRef = useRef()
-
-  useFrame((state) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y = state.clock.elapsedTime * 0.06
-    }
-  })
-
-  return (
-    <group ref={groupRef} rotation={[Math.PI * 0.15, 0, 0]}>
-      {/* Place text at 4 cardinal points around the ring */}
-      {[0, Math.PI / 2, Math.PI, Math.PI * 1.5].map((angle, i) => (
-        <group key={i} position={[Math.cos(angle) * 8.5, 0, Math.sin(angle) * 8.5]}>
-          <Billboard follow lockX={false} lockY={false} lockZ={false}>
-            <Text
-              fontSize={0.5}
-              color="#fde68a"
-              anchorX="center"
-              anchorY="middle"
-              fillOpacity={0.35}
-              font={undefined}
-            >
-              {i % 2 === 0 ? 'AnonEmote' : '✦'}
-            </Text>
-          </Billboard>
-        </group>
-      ))}
-    </group>
-  )
-}
-
 export default function CentralStar({ peerCount = 0 }) {
   const meshRef = useRef()
   const glowRef = useRef()
@@ -175,7 +91,6 @@ export default function CentralStar({ peerCount = 0 }) {
   const affirmation = useMemo(() => getDailyAffirmation(), [])
 
   // ── Aggregate emotion pulse ────────────────────────────────────────────────
-  // Read posts from store to determine dominant emotion
   const dominantRef = useRef(null)
   const targetColorRef = useRef(DEFAULT_STAR_COLOR.clone())
   const targetEmissiveRef = useRef(DEFAULT_EMISSIVE.clone())
@@ -187,23 +102,11 @@ export default function CentralStar({ peerCount = 0 }) {
     return null
   }, [avatar?.auraColor])
 
-  // ── Click handler — select "all" view ──────────────────────────────────────
+  // ── Click handler — deselect planet, return to overview ────────────────────
   const handleClick = useCallback((e) => {
     e.stopPropagation()
-    // Clicking the star deselects any planet (returns to overview)
-    // Could also open an "all posts" view — for now, deselect
     const store = useAppStore.getState()
     store.setSelectedPlanet(null)
-  }, [])
-
-  // ── Energy streams toward planets ──────────────────────────────────────────
-  const streams = useMemo(() => {
-    return PLANETS.map((planet, i) => ({
-      targetRadius: planet.orbitRadius,
-      angle: (i / PLANETS.length) * Math.PI * 2,
-      color: planet.color,
-      speed: 0.5 + Math.random() * 0.5,
-    }))
   }, [])
 
   // ── Animation loop ─────────────────────────────────────────────────────────
@@ -338,10 +241,7 @@ export default function CentralStar({ peerCount = 0 }) {
         </Billboard>
       )}
 
-      {/* ── Feature 5: Floating text ring ────────────────────────────────── */}
-      <TextRing />
-
-      {/* ── Feature 7: Daily affirmation (shown on hover) ────────────────── */}
+      {/* ── Feature 5: Daily affirmation (shown on hover) ────────────────── */}
       {hovered && (
         <Billboard position={[0, -8, 0]} follow lockX={false} lockY={false}>
           <Text
@@ -358,17 +258,6 @@ export default function CentralStar({ peerCount = 0 }) {
           </Text>
         </Billboard>
       )}
-
-      {/* ── Feature 4: Energy streams toward planets ─────────────────────── */}
-      {sceneConfig.bloomEnabled && streams.map((stream, i) => (
-        <EnergyStream
-          key={i}
-          targetRadius={stream.targetRadius}
-          angle={stream.angle}
-          color={stream.color}
-          speed={stream.speed}
-        />
-      ))}
     </group>
   )
 }
