@@ -1,8 +1,8 @@
 # AnonEmote
 
 A web-based 3D anonymous emotional expression platform with hybrid AI content
-moderation, built to give Filipino college students a psychologically safe space
-to express difficult feelings without fear of social stigma.
+moderation, built to give people a psychologically safe space to express
+difficult feelings without fear of social stigma.
 
 **Capstone project** — BS Information Technology (Multimedia Technology)  
 Divine Word College of Legazpi  
