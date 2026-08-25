@@ -23,7 +23,7 @@ import SettingsPanel from './SettingsPanel'
  * Mobile buttons: 44×44px tap area via invisible padding extenders.
  */
 export default function HUD({ peerCount = 0 }) {
-  const { setPhase, privateNotes, onboarding, startOnboarding, isAuthenticated } = useAppStore()
+  const { setPhase, privateNotes, onboarding, startOnboarding, isAuthenticated, openEvaluationModal } = useAppStore()
   const [notesOpen, setNotesOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const isMobile = useIsSmallScreen()
@@ -141,6 +141,37 @@ export default function HUD({ peerCount = 0 }) {
 
         {/* Right: settings gear + help button */}
         <div className={`flex items-center gap-2`}>
+          {/* Feedback button — passive entry point to evaluation modal (authenticated only) */}
+          {isAuthenticated && (
+            <button
+              onClick={openEvaluationModal}
+              className={`relative rounded-full uppercase tracking-[0.15em]
+                text-white border border-white/30
+                hover:text-white hover:bg-white/[0.05] transition-all duration-200
+                focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70
+                flex items-center justify-center
+                ${isMobile
+                  ? 'w-7 h-7 text-[11px]'
+                  : 'w-8 h-8 text-sm'
+                }
+              `}
+              aria-label="Share feedback"
+              title="Share feedback"
+            >
+              {isMobile && (
+                <span
+                  className="absolute inset-0 -m-2"
+                  style={{ minWidth: '44px', minHeight: '44px' }}
+                  aria-hidden="true"
+                />
+              )}
+              {/* Chat bubble icon */}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+            </button>
+          )}
+
           {/* Gear icon — opens Graphics Settings panel */}
           <button
             onClick={() => setSettingsOpen(true)}

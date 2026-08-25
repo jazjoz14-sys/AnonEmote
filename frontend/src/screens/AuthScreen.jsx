@@ -128,7 +128,7 @@ export default function AuthScreen() {
             {mode === 'login'
               ? 'Sign in to broadcast, react, and reply.'
               : mode === 'register'
-                ? 'Your email is private â€” other users only see your avatar.'
+                ? 'Your email is private other users only see your avatar.'
                 : 'Enter your email and we\'ll send a reset link.'}
           </p>
         </div>

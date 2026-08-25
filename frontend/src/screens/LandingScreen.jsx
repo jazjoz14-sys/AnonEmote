@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, Suspense, useMemo } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import useAppStore from '../store/useAppStore'
 import { CLAY, makeClayBlob } from '../components/3d/clay'
@@ -7,6 +7,9 @@ import { PLANETS } from '../data/planets'
 import { useIsSmallScreen } from '../lib/device'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
+import { HERO, STATEMENT, CTA, PLANET_DESCRIPTIONS } from '../data/landingCopy'
+import CarouselPlanetScene from '../components/3d/CarouselPlanetScene'
+
 
 /**
  * LandingScreen — OkayDev-inspired atmospheric landing.
@@ -277,7 +280,7 @@ function MobilePlanetCard({ planet }) {
       </div>
       {/* Description */}
       <p className="text-slate-300 text-sm leading-relaxed">
-        {planet.description}
+        {PLANET_DESCRIPTIONS[planet.id]?.tagline}
       </p>
       {/* Traits */}
       {details && (
@@ -320,10 +323,47 @@ function MobilePlanetList() {
   )
 }
 
+/* ── 3D Carousel Scene — all 7 planets in one persistent Canvas ─────────────── */
+/**
+ * All 7 planets laid out on the X-axis, scrolling WITH the CSS text track.
+ *
+ * The Canvas is full-width (100%), no clip-path. Each planet sits at the
+ * center of the LEFT half of its virtual slide (one viewport width per slide).
+ * The group translates at the same rate as the CSS translateX so planets
+ * move perfectly in sync with their text panels.
+ */
+function CarouselScene({ progressRef }) {
+  const groupRef = useRef()
+  const { viewport } = useThree()
+  // Each slide is one full viewport width apart in 3D units
+  const SPACING = viewport.width
+
+  useFrame(() => {
+    if (!groupRef.current) return
+    // Translate the group at the same rate as CSS translateX
+    // progress 0→1 maps to 0→(PLANETS.length-1) slides of movement
+    groupRef.current.position.x = -(progressRef.current * (PLANETS.length - 1)) * SPACING
+  })
+
+  return (
+    <group ref={groupRef}>
+      {PLANETS.map((planet, i) => (
+        // Position each planet at the center of the LEFT half of its slide
+        // Slide center = i * SPACING, left-half center = -SPACING/4 from that
+        <group key={planet.id} position={[i * SPACING - SPACING / 4, 0, 0]}>
+          <CarouselPlanetScene planet={planet} active={true} />
+        </group>
+      ))}
+    </group>
+  )
+}
+
 /* ── Horizontal scroll driven by vertical scroll (scroll-jacking) ──────────── */
 function PlanetCarousel() {
   const trackRef = useRef(null)
   const sectionRef = useRef(null)
+  const [activeSlideIndex, setActiveSlideIndex] = useState(0)
+  const progressRef = useRef(0) // Written by scroll handler, read by useFrame (no re-renders)
 
   useEffect(() => {
     const section = sectionRef.current
@@ -337,43 +377,49 @@ function PlanetCarousel() {
       const progress = Math.max(0, Math.min(1, scrolled / sectionHeight))
       const maxTranslate = track.scrollWidth - window.innerWidth
       track.style.transform = `translateX(-${progress * maxTranslate}px)`
+
+      // Update ref for 3D (no re-render)
+      progressRef.current = progress
+      // Update state for dots only
+      setActiveSlideIndex(Math.round(progress * (PLANETS.length - 1)))
     }
 
-    // The landing page uses its own scroll container, not window
     const scrollParent = section.closest('.overflow-y-auto') || window
     const target = scrollParent === window ? window : scrollParent
     target.addEventListener('scroll', handleScroll, { passive: true })
-
-    return () => {
-      target.removeEventListener('scroll', handleScroll)
-    }
+    return () => target.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // Height = ~400vh scroll distance (7 planets × 57vh each) for a proportional scrolling experience
   return (
-    <section
-      ref={sectionRef}
-      className="relative z-10"
-      style={{ height: `${Math.round(PLANETS.length * 57)}vh` }}
-    >
-      {/* Sticky container — stays on screen while user scrolls through the height */}
-      <div className="sticky top-0 h-screen overflow-hidden">
-        {/* Header */}
+    <section ref={sectionRef} className="relative z-10" style={{ height: `${Math.round(PLANETS.length * 57)}vh` }}>
+      <div className="sticky top-0 h-screen overflow-hidden relative">
         <div className="absolute top-8 left-6 md:left-12 z-10">
-          <p className="text-[11px] tracking-[0.35em] uppercase text-slate-500 mb-2">
-            Seven Planets
-          </p>
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight">
-            One for every feeling.
-          </h2>
+          <p className="text-[11px] tracking-[0.35em] uppercase text-slate-500 mb-2">Seven Planets</p>
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight">One for every feeling.</h2>
         </div>
 
-        {/* Horizontal track — translated by scroll */}
-        <div
-          ref={trackRef}
-          className="flex h-full will-change-transform"
-          style={{ width: `${PLANETS.length * 100}vw` }}
+        {/* 3D Canvas — full-width, no clip-path. Planets scroll with the text track. */}
+        <Canvas
+          dpr={[1, 1.25]}
+          camera={{ position: [0, 0, 12], fov: 35 }}
+          gl={{ antialias: true, alpha: true }}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            zIndex: 5,
+          }}
         >
+          <Suspense fallback={null}>
+            <CarouselScene progressRef={progressRef} />
+          </Suspense>
+        </Canvas>
+
+        {/* Horizontal text track — translated by scroll */}
+        <div ref={trackRef} className="flex h-full will-change-transform" style={{ width: `${PLANETS.length * 100}vw` }}>
           {PLANETS.map((planet) => (
             <PlanetSlide key={planet.id} planet={planet} />
           ))}
@@ -381,12 +427,9 @@ function PlanetCarousel() {
 
         {/* Scroll progress dots */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-          {PLANETS.map((p) => (
-            <div
-              key={p.id}
-              className="w-2 h-2 rounded-full bg-white/20"
-              style={{ background: p.color + '60' }}
-            />
+          {PLANETS.map((p, i) => (
+            <div key={p.id} className="w-2 h-2 rounded-full transition-colors duration-300"
+                 style={{ background: i === activeSlideIndex ? p.color : p.color + '40' }} />
           ))}
         </div>
       </div>
@@ -397,35 +440,28 @@ function PlanetCarousel() {
 /* ── Planet slide — one per screen width ───────────────────────────────────── */
 function PlanetSlide({ planet }) {
   const details = PLANET_DETAILS[planet.id]
+
   return (
     <div className="flex-shrink-0 w-screen h-full
                     flex flex-col md:flex-row items-center justify-center
                     px-8 md:px-20 gap-8 md:gap-16">
 
-      {/* Planet visual — static icon (avoids WebGL context explosion) */}
-      <div className="w-full md:w-1/2 h-[40vh] md:h-[70vh] relative flex items-center justify-center"
-           style={{ background: 'radial-gradient(circle at center, rgba(139,92,246,0.03) 0%, transparent 60%)' }}>
-        <img
-          src={PLANET_ICONS[planet.id]}
-          alt={planet.label}
-          className="w-40 h-40 md:w-56 md:h-56 object-contain drop-shadow-[0_0_40px_rgba(139,92,246,0.2)]"
-          draggable={false}
-        />
-      </div>
+      {/* Left half — empty spacer (3D Canvas overlays this area) */}
+      <div className="w-full md:w-1/2 h-[40vh] md:h-[70vh]" />
 
-      {/* Info */}
+      {/* Info panel — on the right */}
       <div className="w-full md:w-1/2 max-w-md flex flex-col gap-4">
         <div className="flex items-center gap-3">
           <img src={PLANET_ICONS[planet.id]} alt="" className="w-8 h-8 object-contain" draggable={false} />
           <h3 className="text-white text-2xl md:text-3xl font-bold tracking-tight">{planet.label}</h3>
         </div>
         <p className="text-slate-300 text-sm md:text-base leading-relaxed">
-          {planet.description}
+          {PLANET_DESCRIPTIONS[planet.id]?.tagline}
         </p>
         {details && (
           <>
             <p className="text-slate-400 text-sm leading-relaxed">
-              {details.purpose}
+              {PLANET_DESCRIPTIONS[planet.id]?.purpose}
             </p>
             <div className="flex flex-wrap gap-2 mt-1">
               {details.traits.map((t) => (
@@ -469,7 +505,7 @@ export default function LandingScreen() {
       >
         {/* Eyebrow */}
         <p className="text-[11px] tracking-[0.35em] uppercase text-slate-500 mb-6">
-          A safe space for anonymous expression
+          {HERO.eyebrow}
         </p>
 
         {/* Massive headline — responsive font sizing */}
@@ -502,8 +538,7 @@ export default function LandingScreen() {
 
         {/* Sub */}
         <p className="mt-8 text-slate-400 text-sm md:text-base max-w-md text-center leading-relaxed font-light">
-          No accounts. No names. No data stored. 
-          Just a 3D emotional space moderated by AI for your safety.
+          {HERO.subtitle}
         </p>
 
         {/* CTA — outline button using Button primitive */}
@@ -531,14 +566,13 @@ export default function LandingScreen() {
                            ${isSmallScreen ? 'py-12' : 'py-24 md:py-36'}`}>
         <div className="max-w-3xl mx-auto text-center">
           <p className="text-[11px] tracking-[0.35em] uppercase text-slate-500 mb-6">
-            Zero Knowledge Architecture
+            {STATEMENT.eyebrow}
           </p>
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight leading-snug">
-            No account. No name. No trace. Your identity is a random number that expires when you close the tab.
+            {STATEMENT.headline}
           </h2>
           <p className="mt-6 text-slate-500 text-sm leading-relaxed max-w-lg mx-auto">
-            Even administrators cannot identify who wrote what — only that it was safe to publish.
-            If you're in crisis, we show help. Never silence.
+            {STATEMENT.subtitle}
           </p>
         </div>
       </section>
@@ -548,18 +582,18 @@ export default function LandingScreen() {
                            ${isSmallScreen ? 'py-12' : 'py-28 md:py-40'}`}>
         <div className="max-w-2xl mx-auto text-center">
           <p className="text-[11px] tracking-[0.35em] uppercase text-slate-500 mb-6">
-            Imposters welcome here
+            {CTA.eyebrow}
           </p>
           <h2 className={`font-bold text-white tracking-tight leading-[0.95]
                           ${isSmallScreen ? 'text-2xl' : 'text-3xl sm:text-4xl md:text-5xl'}`}>
-            Ready to speak<br />without fear?
+            {CTA.headline}
           </h2>
           <Button
             variant="primary"
             onClick={() => setPhase('auth')}
             className="mt-10 px-10 py-4"
           >
-            Join Free Today
+            {CTA.buttonLabel}
           </Button>
         </div>
       </section>

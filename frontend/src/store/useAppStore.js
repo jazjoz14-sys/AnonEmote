@@ -253,6 +253,18 @@ const useAppStore = create((set, get) => ({
   postModalOpen: false,
   setPostModalOpen: (v) => set({ postModalOpen: v }),
 
+  // ── Evaluation ────────────────────────────────────────────────────────────
+  // Controls the non-intrusive notification toast and evaluation feedback modal.
+  // The notification appears after the activity timer threshold is reached;
+  // accepting it opens the modal and hides the notification simultaneously.
+  evaluationNotificationVisible: false,
+  evaluationModalOpen: false,
+
+  showEvaluationNotification: () => set({ evaluationNotificationVisible: true }),
+  hideEvaluationNotification: () => set({ evaluationNotificationVisible: false }),
+  openEvaluationModal: () => set({ evaluationModalOpen: true, evaluationNotificationVisible: false }),
+  closeEvaluationModal: () => set({ evaluationModalOpen: false }),
+
   // ── Onboarding slice ──────────────────────────────────────────────────────
   onboarding: {
     active: false,       // overlay currently visible

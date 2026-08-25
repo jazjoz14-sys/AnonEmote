@@ -17,6 +17,7 @@ import { reactionsRouter } from './routes/reactions.js'
 import { reportsRouter } from './routes/reports.js'
 import { repliesRouter } from './routes/replies.js'
 import { adminRouter } from './routes/admin.js'
+import { evaluationsRouter } from './routes/evaluations.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -56,7 +57,7 @@ app.use(cors({
     console.warn('[CORS] blocked origin:', origin)
     return callback(new Error('Not allowed by CORS'))
   },
-  methods: ['GET', 'POST'],
+  methods: ['GET', 'POST', 'PATCH'],
   credentials: false,
 }))
 // Drawings are base64-encoded PNGs that can reach 200–400KB, so the body
@@ -73,6 +74,7 @@ app.use('/api/posts', postsRouter)
 app.use('/api/reactions', reactionsRouter)
 app.use('/api/reports', reportsRouter)
 app.use('/api/replies', repliesRouter)
+app.use('/api/evaluations', evaluationsRouter)
 app.use('/api/admin', adminRouter)
 
 // Health check

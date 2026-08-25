@@ -126,7 +126,7 @@ describe('Property 3: Navigation state always maps to exactly one visible page',
     // This is a structural property: the valid pages set has no duplicates
     const uniqueIds = new Set(VALID_PAGES)
     expect(uniqueIds.size).toBe(VALID_PAGES.length)
-    // Also test that exactly 6 pages are configured
-    expect(VALID_PAGES.length).toBe(6)
+    // Also test that exactly 7 pages are configured
+    expect(VALID_PAGES.length).toBe(7)
   })
 })

@@ -10,9 +10,10 @@ import RulesPage from './pages/RulesPage.jsx'
 import UsersPage from './pages/UsersPage.jsx'
 import MonitorPage from './pages/MonitorPage.jsx'
 import LogsPage from './pages/LogsPage.jsx'
+import EvaluationsPage from './pages/EvaluationsPage.jsx'
 
 /**
- * @typedef {'dashboard'|'reports'|'rules'|'users'|'monitor'|'logs'} PageId
+ * @typedef {'dashboard'|'reports'|'rules'|'evaluations'|'users'|'monitor'|'logs'} PageId
  */
 
 /**
@@ -78,6 +79,8 @@ export default function AdminLayout({ onLogout, onAuthError }) {
         return <ReportsPage onAuthError={onAuthError} />
       case 'rules':
         return <RulesPage onAuthError={onAuthError} />
+      case 'evaluations':
+        return <EvaluationsPage onAuthError={onAuthError} />
       case 'users':
         return <UsersPage onAuthError={onAuthError} />
       case 'monitor':

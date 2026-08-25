@@ -99,3 +99,10 @@ export const suspendUser = (userId, reason) =>
 
 export const unsuspendUser = (userId) =>
   request(`/users/${userId}/unsuspend`, { method: 'POST' })
+
+// ── Flow 5: evaluations ───────────────────────────────────────────────────
+export const fetchEvaluations = (page = 1, limit = 50) =>
+  request(`/evaluations?page=${page}&limit=${limit}`)
+
+export const markEvaluationReviewed = (evaluationId) =>
+  request(`/evaluations/${evaluationId}/review`, { method: 'PATCH' })

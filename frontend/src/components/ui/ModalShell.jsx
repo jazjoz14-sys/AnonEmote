@@ -25,6 +25,7 @@ import useAppStore from '../../store/useAppStore'
  * @param {number} [props.desktopWidth] - Desktop panel width in px (default: 480)
  * @param {boolean} [props.preventBackdropClose] - Prevent backdrop/Escape dismissal
  * @param {string} [props.ariaLabel] - Accessible label for the dialog
+ * @param {string} [props.ariaLabelledBy] - ID of the element that labels the dialog (takes precedence over ariaLabel)
  * @param {string} [props.role] - ARIA role override (default: "dialog")
  * @param {React.ReactNode} props.children
  */
@@ -38,6 +39,7 @@ export default function ModalShell({
   desktopWidth = 480,
   preventBackdropClose = false,
   ariaLabel,
+  ariaLabelledBy,
   role = 'dialog',
   children,
 }) {
@@ -105,7 +107,11 @@ export default function ModalShell({
   const dialogProps = {
     role,
     'aria-modal': 'true',
-    ...(ariaLabel ? { 'aria-label': ariaLabel } : {}),
+    ...(ariaLabelledBy
+      ? { 'aria-labelledby': ariaLabelledBy }
+      : ariaLabel
+        ? { 'aria-label': ariaLabel }
+        : {}),
   }
 
   // ─── Mobile Portrait: bottom-anchored sheet ────────────────────────────────

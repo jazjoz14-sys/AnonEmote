@@ -8,6 +8,7 @@ import StarSystem from '../components/3d/StarSystem'
 import GalacticBackdrop from '../components/3d/GalacticBackdrop'
 import PeerAvatars from '../components/3d/PeerAvatars'
 import usePresence from '../hooks/usePresence'
+import { useActivityTimer } from '../hooks/useActivityTimer'
 import { useIsSmallScreen, useViewportSize } from '../lib/device'
 import { useGraphicsConfig } from '../hooks/useGraphicsConfig'
 import { useStabilityTracker } from '../hooks/useStabilityTracker'
@@ -18,6 +19,8 @@ import OnboardingOverlay from '../components/ui/OnboardingOverlay'
 import { supabase } from '../lib/supabase'
 import { isHintDismissed, dismissHint, HINT_PLANET_PULSE } from '../lib/hintStore'
 import { PLANETS } from '../data/planets'
+import EvaluationNotification from '../components/ui/EvaluationNotification'
+import EvaluationModal from '../components/modals/EvaluationModal'
 
 // Scratch objects â€” allocated once, reused every frame
 const _desiredCamPos = new THREE.Vector3()
@@ -213,9 +216,20 @@ export default function SpaceScreen() {
     setPosts, selectedPlanet, setSelectedPlanet,
     crisis, reportTarget, postModalOpen,
     onboarding, startOnboarding,
+    evaluationNotificationVisible, evaluationModalOpen,
+    showEvaluationNotification, hideEvaluationNotification,
+    openEvaluationModal, closeEvaluationModal,
   } = useAppStore()
   const config = useGraphicsConfig()
   const isSmallScreen = useIsSmallScreen()
+
+  // ─── Evaluation activity timer ─────────────────────────────────────────────
+  // Tracks cumulative active time in the Space phase. The hook internally
+  // checks isAuthenticated and phase === 'space', so guest users are gated.
+  useActivityTimer({
+    threshold: 300,
+    onThresholdReached: showEvaluationNotification,
+  })
   const { height: viewportHeight } = useViewportSize()
   const controlsRef = useRef()
   const [contextLost, setContextLost] = useState(false)
@@ -573,6 +587,17 @@ export default function SpaceScreen() {
 
       {/* Onboarding tutorial overlay â€” renders above the 3D scene as HTML */}
       <OnboardingOverlay />
+
+      {/* Evaluation system — non-intrusive feedback collection */}
+      <EvaluationNotification
+        visible={evaluationNotificationVisible}
+        onAccept={openEvaluationModal}
+        onDismiss={hideEvaluationNotification}
+      />
+      <EvaluationModal
+        open={evaluationModalOpen}
+        onClose={closeEvaluationModal}
+      />
 
       {/* Visible recovery prompt instead of a silently frozen scene */}
       {contextLost && (

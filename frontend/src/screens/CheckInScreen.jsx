@@ -1,211 +1,319 @@
-import React, { useState } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import useAppStore from '../store/useAppStore'
-import { FEELINGS } from '../data/emotions'
+import { getFeelingById } from '../data/emotions'
 import { getPlanetById } from '../data/planets'
-import { useIsSmallScreen, useIsNarrow } from '../lib/device'
+import { useIsSmallScreen, useIsLandscape } from '../lib/device'
 import PreloadManager from '../components/3d/models/PreloadManager'
-import Card from '../components/ui/Card'
-import Button from '../components/ui/Button'
+import BreathingMoment from '../components/checkin/BreathingMoment.jsx'
+import MoodSpace from '../components/checkin/MoodSpace.jsx'
+import NuanceConstellation from '../components/checkin/NuanceConstellation.jsx'
+import NavigationBar from '../components/checkin/NavigationBar.jsx'
+import AriaAnnouncer from '../components/checkin/AriaAnnouncer.jsx'
 
 /**
- * CheckInScreen — a brief emotional triage before entering the star system.
+ * StarfieldBackground — Canvas-based twinkling starfield matching the landing page.
+ * Renders 150 twinkling white stars and 15 floating violet accent dots.
+ */
+function StarfieldBackground() {
+  const canvasRef = useRef(null)
+  const animRef = useRef(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight }
+    resize()
+    window.addEventListener('resize', resize)
+
+    const stars = Array.from({ length: 150 }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 1.0 + 0.3,
+      alpha: Math.random() * 0.5 + 0.1,
+      twinkleSpeed: Math.random() * 0.015 + 0.003,
+      phase: Math.random() * Math.PI * 2,
+    }))
+
+    const dots = Array.from({ length: 15 }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 1.2 + 0.4,
+      vx: (Math.random() - 0.5) * 0.12,
+      vy: (Math.random() - 0.5) * 0.08 - 0.03,
+      alpha: Math.random() * 0.25 + 0.05,
+    }))
+
+    let frame = 0
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      frame++
+
+      for (const s of stars) {
+        const twinkle = Math.sin(frame * s.twinkleSpeed + s.phase) * 0.3 + 0.7
+        ctx.beginPath()
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(255,255,255,${s.alpha * twinkle})`
+        ctx.fill()
+      }
+
+      for (const d of dots) {
+        d.x += d.vx; d.y += d.vy
+        if (d.x < 0) d.x = canvas.width
+        if (d.x > canvas.width) d.x = 0
+        if (d.y < 0) d.y = canvas.height
+        if (d.y > canvas.height) d.y = 0
+        ctx.beginPath()
+        ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(139,92,246,${d.alpha})`
+        ctx.fill()
+      }
+
+      animRef.current = requestAnimationFrame(draw)
+    }
+    draw()
+    return () => { window.removeEventListener('resize', resize); cancelAnimationFrame(animRef.current) }
+  }, [])
+
+  return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0" aria-hidden="true" />
+}
+
+/**
+ * CheckInScreen — immersive spatial mood interaction using the Yale Mood Meter
+ * quadrant model (energy × pleasantness).
  *
- * Step 1: broad feeling  → determines which planet the user is routed to
- * Step 2: nuanced word   → sets a tailored writing prompt
+ * 3-step state machine:
+ *   breathing → mood (MoodSpace interactive) → nuance (NuanceConstellation)
  *
- * Naming a feeling precisely is regulating in itself, so the nuance step serves
- * the user as much as it serves routing. Skipping is always available — nobody
- * should be forced to categorise their distress before being allowed to speak.
+ * The breathing overlay sits on top of the MoodSpace (which is rendered
+ * non-interactive behind it) so the ambient visual is already visible during
+ * the calming entrance animation.
  *
- * Responsive breakpoints:
- *   < 380px (narrow): 1-column grid, horizontal cards (emoji left, text right)
- *   380–767px (mobile): 2-column grid, 10px gap, 80px min-height cards
- *   ≥ 768px (desktop): existing 3-column grid layout
+ * On completion, writes to Zustand in exact order:
+ *   1. setSelectedPlanet (skipped if getPlanetById returns undefined)
+ *   2. setCheckIn({ feeling, nuance, prompt })
+ *   3. setPhase('space')
+ *   4. setPostModalOpen(true)
+ *
+ * Skip from any step: setPhase('space') only — no other store writes.
+ * Back: setPhase('avatar')
  *
  * Visual: cosmic monochrome + violet accent (#8b5cf6).
- *   - Solid #050510 background (no gradients)
- *   - Outline-only cards (border-white/[0.08], bg-transparent)
- *   - No glass-morphism, blur effects, or colored border tints
- *   - Focus ring: 2px violet-500/60 on keyboard navigation
- *   - Hover: border-white/20 + subtle scale transform
+ *   - Solid #050510 background, no glass-morphism, no backdrop-filter
+ *   - Fade-out transition 300ms (opacity + translateY, GPU-compositable)
+ *   - Landscape <768px: side-by-side layout
+ *
+ * Requirements: 1.6, 2.4, 3.3, 3.4, 5.1–5.7, 6.1–6.3, 6.6, 7.5, 9.1, 9.2, 9.4, 10.1, 10.5–10.7
  */
 export default function CheckInScreen() {
   const { setPhase, setSelectedPlanet, setCheckIn, setPostModalOpen } = useAppStore()
 
-  const [step, setStep] = useState(1)
-  const [feeling, setFeeling] = useState(null)
+  // ─── Local State Machine ────────────────────────────────────────────────────
+  const [step, setStep] = useState('breathing') // 'breathing' | 'mood' | 'nuance'
+  const [selectedFeeling, setSelectedFeeling] = useState(null)
+  const [isFadingOut, setIsFadingOut] = useState(false)
 
+  // ─── Refs ───────────────────────────────────────────────────────────────────
+  const announcerRef = useRef(null)
+
+  // ─── Responsive Detection ───────────────────────────────────────────────────
   const isMobile = useIsSmallScreen()
-  const isNarrow = useIsNarrow()
+  const isLandscape = useIsLandscape()
+  const useSideBySide = isMobile && isLandscape
 
-  /** Route into the star system with the matching planet focused. */
-  const enterSpace = ({ withComposer, feelingId, nuance }) => {
-    if (feelingId) {
+  // ─── Fade-Out Helper ────────────────────────────────────────────────────────
+  /**
+   * Applies a 300ms fade-out (opacity + translateY) before executing a callback.
+   * Uses GPU-compositable properties only (opacity, transform).
+   */
+  const fadeOutThen = useCallback((callback) => {
+    setIsFadingOut(true)
+    setTimeout(() => {
+      callback()
+    }, 300)
+  }, [])
+
+  // ─── Complete Check-In ──────────────────────────────────────────────────────
+  /**
+   * Called when the user selects a nuance. Writes to store in exact order:
+   * setSelectedPlanet → setCheckIn → setPhase('space') → setPostModalOpen(true)
+   *
+   * Handles getPlanetById returning undefined gracefully.
+   */
+  const completeCheckIn = useCallback((feelingId, nuance) => {
+    fadeOutThen(() => {
       const planet = getPlanetById(feelingId)
       if (planet) setSelectedPlanet(planet)
-      setCheckIn({ feeling: feelingId, nuance: nuance?.id || null, prompt: nuance?.prompt || null })
+      setCheckIn({ feeling: feelingId, nuance: nuance.id, prompt: nuance.prompt })
+      setPhase('space')
+      setPostModalOpen(true)
+    })
+  }, [fadeOutThen, setSelectedPlanet, setCheckIn, setPhase, setPostModalOpen])
+
+  // ─── Skip Check-In ─────────────────────────────────────────────────────────
+  /**
+   * Skip from any step — only calls setPhase('space'), no other store writes.
+   * Discards any partial feeling selection.
+   */
+  const skipCheckIn = useCallback(() => {
+    fadeOutThen(() => {
+      setPhase('space')
+    })
+  }, [fadeOutThen, setPhase])
+
+  // ─── Back to Avatar ─────────────────────────────────────────────────────────
+  const goBack = useCallback(() => {
+    fadeOutThen(() => {
+      setPhase('avatar')
+    })
+  }, [fadeOutThen, setPhase])
+
+  // ─── Feeling Selected (mood → nuance transition) ───────────────────────────
+  const handleFeelingSelected = useCallback((feelingId) => {
+    const feeling = getFeelingById(feelingId)
+    if (feeling) {
+      setSelectedFeeling(feeling)
+      setStep('nuance')
+
+      // Announce transition for screen readers
+      if (announcerRef.current) {
+        announcerRef.current.announceAssertive(
+          `${feeling.label} selected. Choose a nuance word that resonates.`
+        )
+      }
     }
-    setPhase('space')
-    if (withComposer) setPostModalOpen(true)
+  }, [])
+
+  // ─── Quadrant Change (for AriaAnnouncer) ───────────────────────────────────
+  const handleQuadrantChange = useCallback((_quadrant, _feelings) => {
+    // Quadrant change announcements are handled internally by MoodSpace
+    // via the announcerRef. This callback is available for additional
+    // orchestrator-level logic if needed in the future.
+  }, [])
+
+  // ─── Nuance Selected ───────────────────────────────────────────────────────
+  const handleNuanceSelect = useCallback((nuance) => {
+    if (selectedFeeling) {
+      completeCheckIn(selectedFeeling.id, nuance)
+    }
+  }, [selectedFeeling, completeCheckIn])
+
+  // ─── Breathing Complete ─────────────────────────────────────────────────────
+  const handleBreathingComplete = useCallback(() => {
+    setStep('mood')
+  }, [])
+
+  // ─── Step Indicator Text ────────────────────────────────────────────────────
+  const getStepIndicator = () => {
+    if (step === 'breathing' || step === 'mood') return 'Step 1 of 2'
+    if (step === 'nuance') return 'Step 2 of 2'
+    return ''
   }
 
-  const chooseFeeling = (f) => {
-    setFeeling(f)
-    setStep(2)
+  const getHeading = () => {
+    if (step === 'breathing' || step === 'mood') {
+      return 'Where does your energy sit right now?'
+    }
+    if (step === 'nuance' && selectedFeeling) {
+      return 'Which word captures the nuance?'
+    }
+    return ''
   }
 
-  const chooseNuance = (n) => {
-    enterSpace({ withComposer: true, feelingId: feeling.id, nuance: n })
-  }
-
-  // Determine grid classes based on breakpoint
-  const getStep1GridClass = () => {
-    if (isNarrow) return 'grid grid-cols-1 gap-2'
-    if (isMobile) return 'grid grid-cols-2 gap-[10px]'
-    return 'grid grid-cols-2 md:grid-cols-3 gap-3'
-  }
-
-  const getStep2GridClass = () => {
-    if (isMobile) return 'grid grid-cols-2 gap-[10px]'
-    return 'grid grid-cols-2 md:grid-cols-3 gap-3'
-  }
+  // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <>
+      {/* PreloadManager: calls useGLTF.preload() only, no Canvas/WebGL */}
       <PreloadManager />
-      <div
-        className="relative w-full h-full flex items-start justify-center p-4 md:p-6 overflow-y-auto overflow-x-hidden bg-[#050510]"
-      >
 
       <div
-        className="relative z-10 w-full max-w-2xl flex flex-col gap-4 md:gap-6 animate-fade-in"
-        style={isMobile ? { paddingTop: '4vh' } : undefined}
+        className={[
+          'relative w-full h-full flex flex-col bg-[#050510] overflow-hidden',
+          'transition-all duration-300 ease-out',
+          isFadingOut ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0',
+        ].join(' ')}
+        style={{ minHeight: '100dvh' }}
       >
+        {/* Starfield background — twinkling stars + violet dots */}
+        <StarfieldBackground />
 
-        {/* ── Step 1: broad feeling ─────────────────────────────────────── */}
-        {step === 1 && (
-          <>
-            <header className="text-center flex flex-col gap-1 md:gap-2">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">
-                Step 1 of 2
-              </p>
-              <h1
-                className={`font-semibold text-white leading-snug ${
-                  isMobile ? 'text-[1.25rem] line-clamp-3' : 'text-2xl md:text-3xl'
-                }`}
-              >
-                No one needs to know but you.
-                <br />
-                <span className="text-violet-300">What are you truly feeling right now?</span>
-              </h1>
-              <p className="text-sm text-white/60">
-                This only guides where your words land. There is no wrong answer.
-              </p>
-            </header>
+        {/* AriaAnnouncer — live regions for screen reader announcements */}
+        <AriaAnnouncer ref={announcerRef} />
 
-            <div
-              className={getStep1GridClass()}
-              style={isNarrow ? { maxHeight: '55vh', overflowY: 'auto' } : undefined}
-            >
-              {FEELINGS.map((f) => (
-                <Card
-                  key={f.id}
-                  variant="interactive"
-                  onClick={() => chooseFeeling(f)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chooseFeeling(f) } }}
-                  className={`hover:scale-[1.02]
-                             ${isNarrow
-                               ? 'flex flex-row items-center gap-3 p-3 min-h-[44px]'
-                               : isMobile
-                                 ? 'flex flex-col items-center gap-2 text-center p-3 min-h-[80px]'
-                                 : 'p-3 sm:p-4 min-h-[44px] min-w-[44px] flex flex-col items-center gap-2 text-center'
-                             }`}
-                >
-                  <span className={isNarrow ? 'text-2xl flex-shrink-0' : 'text-3xl'}>{f.emoji}</span>
-                  <div className={isNarrow ? 'flex flex-col items-start text-left' : ''}>
-                    <span className="font-semibold text-white text-sm">{f.label}</span>
-                    <span className="text-xs text-white/60 leading-snug">{f.sub}</span>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </>
-        )}
+        {/* Navigation (always visible) — positioned at bottom */}
+        <div className="absolute bottom-0 left-0 right-0 z-20">
+          <NavigationBar onSkip={skipCheckIn} onBack={goBack} />
+        </div>
 
-        {/* ── Step 2: nuance ────────────────────────────────────────────── */}
-        {step === 2 && feeling && (
-          <>
-            <header className="text-center flex flex-col gap-1 md:gap-2">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">
-                Step 2 of 2
-              </p>
-              <h1
-                className={`font-semibold text-white leading-snug ${
-                  isMobile ? 'text-[1.25rem] line-clamp-3' : 'text-2xl md:text-3xl'
-                }`}
-              >
-                Let&apos;s get specific.
-                <br />
-                <span className="text-violet-300">
-                  Which word captures the nuance?
-                </span>
-              </h1>
-              <p className="text-sm text-white/60">
-                Naming it more precisely often makes it easier to carry.
-              </p>
-            </header>
-
-            <div className={getStep2GridClass()}>
-              {feeling.nuances.map((n) => (
-                <Card
-                  key={n.id}
-                  variant="interactive"
-                  onClick={() => chooseNuance(n)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chooseNuance(n) } }}
-                  className={`hover:scale-[1.02] font-medium text-white/70 hover:text-white
-                             ${isMobile
-                               ? 'px-3 py-3 min-h-[44px] text-[13px]'
-                               : 'px-3 sm:px-4 py-4 sm:py-5 min-h-[44px] min-w-[44px] text-sm'
-                             }`}
-                >
-                  {n.label}
-                </Card>
-              ))}
-            </div>
-
-            <Button
-              variant="ghost"
-              onClick={() => { setStep(1); setFeeling(null) }}
-              className="self-center"
-            >
-              ← Choose a different feeling
-            </Button>
-          </>
-        )}
-
-        {/* ── Escape hatches ───────────────────────────────────────────────
-            Always allow bypassing the questions. Someone in distress should
-            never be gated behind a form. */}
-        <div className="flex flex-col items-center gap-2 pt-2">
-          <Button
-            variant="secondary"
-            onClick={() => enterSpace({ withComposer: false })}
+        {/* Main content area */}
+        <div
+          className={[
+            'flex-1 flex items-center justify-center p-4',
+            useSideBySide ? 'flex-row gap-4' : 'flex-col gap-4',
+          ].join(' ')}
+          style={{ paddingBottom: '72px' }} // space for NavigationBar
+        >
+          {/* Text column (heading + step indicator) */}
+          <div
+            className={[
+              'flex flex-col gap-1 z-10',
+              useSideBySide ? 'w-1/3 items-start' : 'w-full max-w-[600px] items-center text-center',
+            ].join(' ')}
           >
-            Skip — let me explore the star system
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => setPhase('avatar')}
+            <p className="text-[10px] uppercase tracking-[0.2em] text-white/50 font-semibold">
+              {getStepIndicator()}
+            </p>
+            <h1 className="font-semibold text-white text-lg sm:text-xl md:text-2xl leading-snug">
+              {getHeading()}
+            </h1>
+            {step === 'mood' && (
+              <p className="text-sm text-white/60 mt-1">
+                Drag or tap to place yourself. No wrong answers.
+              </p>
+            )}
+            {step === 'nuance' && (
+              <p className="text-sm text-white/60 mt-1">
+                Naming it precisely often makes it easier to carry.
+              </p>
+            )}
+          </div>
+
+          {/* Interactive area */}
+          <div
+            className={[
+              'relative',
+              useSideBySide ? 'w-2/3 h-full' : 'w-full max-w-[600px]',
+            ].join(' ')}
           >
-            ← Back to avatar
-          </Button>
+            {/* MoodSpace — visible during breathing (non-interactive) and mood (interactive) */}
+            {(step === 'breathing' || step === 'mood') && (
+              <MoodSpace
+                interactive={step === 'mood'}
+                onFeelingSelected={handleFeelingSelected}
+                onQuadrantChange={handleQuadrantChange}
+                announcerRef={announcerRef}
+              />
+            )}
+
+            {/* Breathing overlay — sits on top of MoodSpace */}
+            {step === 'breathing' && (
+              <BreathingMoment onComplete={handleBreathingComplete} />
+            )}
+
+            {/* NuanceConstellation — shown after feeling is selected */}
+            {step === 'nuance' && selectedFeeling && (
+              <div className="w-full h-[50vh] min-h-[200px] md:h-[60vh]">
+                <NuanceConstellation
+                  nuances={selectedFeeling.nuances}
+                  onSelect={handleNuanceSelect}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
     </>
   )
 }

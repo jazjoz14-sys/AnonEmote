@@ -55,15 +55,15 @@ export default function App() {
   // For guests, show the AuthPromptModal instead
   useEffect(() => {
     if (selectedPlanet && isAuthenticated) {
+      // Authenticated users get the post modal auto-opened when selecting a planet
       setPostModalOpen(true)
       setAuthPromptOpen(false)
-    } else if (selectedPlanet && !isAuthenticated) {
-      setAuthPromptOpen(true)
-      setAuthPlanetContext(selectedPlanet?.label || selectedPlanet?.id)
     } else if (!selectedPlanet) {
       setPostModalOpen(false)
       setAuthPromptOpen(false)
     }
+    // Guests: do nothing when selecting a planet — they can browse posts freely.
+    // Write-gating is handled by PlanetInfoPanel's "Broadcast" button.
   }, [selectedPlanet, isAuthenticated, setPostModalOpen])
 
   // The admin console renders on its own — the 3D canvas is never mounted here,
@@ -111,7 +111,7 @@ export default function App() {
       {/* Auth prompt for guest write-gating — shown when guest selects a planet */}
       <AuthPromptModal
         open={authPromptOpen}
-        onClose={() => { setAuthPromptOpen(false); setSelectedPlanet(null) }}
+        onClose={() => { setAuthPromptOpen(false) }}
         planetContext={authPlanetContext}
       />
     </div>

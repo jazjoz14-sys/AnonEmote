@@ -427,7 +427,196 @@ adminRouter.post('/lexicon/test', requireAdmin, async (req, res) => {
 })
 
 /* ══════════════════════════════════════════════════════════════════════════
-   FLOW 4 — USER MANAGEMENT (view, suspend, unsuspend accounts)
+   FLOW 4 — EVALUATION MANAGEMENT (aggregated stats + paginated suggestions)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Map of feedback area IDs to human-readable labels */
+const FEEDBACK_AREA_LABELS = {
+  navigation: 'Easy to navigate',
+  visuals: 'Visuals are appealing',
+  safety: 'I feel safe here',
+  support: 'Emotionally supportive',
+  exploration: 'Fun to explore',
+}
+
+/**
+ * GET /api/admin/evaluations?page=1&limit=50
+ *
+ * Returns aggregated evaluation statistics and a paginated list of
+ * planet suggestions (most recent first).
+ *
+ * Response shape:
+ * {
+ *   stats: { total, average, distribution, feedbackAreas },
+ *   suggestions: [...],
+ *   pagination: { page, limit, total, hasMore }
+ * }
+ */
+adminRouter.get('/evaluations', requireAdmin, async (req, res) => {
+  const supabase = getSupabase()
+  if (!supabase) return res.status(503).json({ error: 'Database not configured.' })
+
+  // ── Parse & clamp pagination params ──────────────────────────────────────
+  const page = Math.max(1, Number(req.query.page) || 1)
+  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50))
+  const offset = (page - 1) * limit
+
+  try {
+    // ── Total evaluation count ───────────────────────────────────────────────
+    const { count: totalCount, error: countErr } = await supabase
+      .from('evaluations')
+      .select('id', { count: 'exact', head: true })
+
+    if (countErr) {
+      console.error('[Admin evaluations] count error:', countErr.message)
+      return res.status(500).json({ error: 'Failed to load evaluations.' })
+    }
+
+    const total = totalCount ?? 0
+
+    // ── Zero evaluations — early return ──────────────────────────────────────
+    if (total === 0) {
+      return res.json({
+        stats: {
+          total: 0,
+          average: 0.0,
+          distribution: { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 },
+          feedbackAreas: [],
+        },
+        suggestions: [],
+        pagination: { page, limit, total: 0, hasMore: false },
+      })
+    }
+
+    // ── Fetch all ratings for distribution & average computation ─────────────
+    const { data: ratingRows, error: ratingErr } = await supabase
+      .from('evaluations')
+      .select('rating')
+
+    if (ratingErr) {
+      console.error('[Admin evaluations] rating fetch error:', ratingErr.message)
+      return res.status(500).json({ error: 'Failed to load evaluations.' })
+    }
+
+    // Compute distribution (count per rating level 1–5)
+    const distribution = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 }
+    let ratingSum = 0
+    for (const row of ratingRows || []) {
+      distribution[String(row.rating)] = (distribution[String(row.rating)] || 0) + 1
+      ratingSum += row.rating
+    }
+
+    // Compute average (1 decimal place)
+    const average = total > 0 ? Math.round((ratingSum / total) * 10) / 10 : 0.0
+
+    // ── Fetch all feedback_areas for aggregation ─────────────────────────────
+    const { data: areaRows, error: areaErr } = await supabase
+      .from('evaluations')
+      .select('feedback_areas')
+
+    if (areaErr) {
+      console.error('[Admin evaluations] feedback_areas fetch error:', areaErr.message)
+      return res.status(500).json({ error: 'Failed to load evaluations.' })
+    }
+
+    // Count occurrences of each feedback area (unnest arrays in JS)
+    const areaCounts = {}
+    for (const row of areaRows || []) {
+      const areas = row.feedback_areas
+      if (Array.isArray(areas)) {
+        for (const area of areas) {
+          areaCounts[area] = (areaCounts[area] || 0) + 1
+        }
+      }
+    }
+
+    // Build ranked feedback areas list (descending by count)
+    const feedbackAreas = Object.entries(areaCounts)
+      .map(([id, count]) => ({
+        id,
+        label: FEEDBACK_AREA_LABELS[id] || id,
+        count,
+      }))
+      .sort((a, b) => b.count - a.count)
+
+    // ── Fetch paginated suggestions (most recent first) ──────────────────────
+    const { data: suggestions, error: sugErr, count: sugTotal } = await supabase
+      .from('evaluations')
+      .select('id, suggestion, rating, moderation_status, reviewed, created_at', { count: 'exact' })
+      .not('suggestion', 'is', null)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+
+    if (sugErr) {
+      console.error('[Admin evaluations] suggestions fetch error:', sugErr.message)
+      return res.status(500).json({ error: 'Failed to load evaluations.' })
+    }
+
+    const suggestionsTotal = sugTotal ?? 0
+    const hasMore = offset + limit < suggestionsTotal
+
+    return res.json({
+      stats: {
+        total,
+        average,
+        distribution,
+        feedbackAreas,
+      },
+      suggestions: suggestions || [],
+      pagination: {
+        page,
+        limit,
+        total: suggestionsTotal,
+        hasMore,
+      },
+    })
+  } catch (err) {
+    console.error('[Admin evaluations] Unexpected error:', err.message)
+    return res.status(500).json({ error: 'Failed to load evaluations.' })
+  }
+})
+
+/**
+ * PATCH /api/admin/evaluations/:id/review
+ *
+ * Marks a specific evaluation as reviewed. Idempotent — calling multiple
+ * times on the same ID simply re-confirms the reviewed state with no
+ * adverse effect.
+ *
+ * Response: { ok: true, id } on success, 404 if not found, 500 on DB error.
+ */
+adminRouter.patch('/evaluations/:id/review', requireAdmin, async (req, res) => {
+  const supabase = getSupabase()
+  if (!supabase) return res.status(503).json({ error: 'Database not configured.' })
+
+  const { id } = req.params
+
+  try {
+    const { data, error } = await supabase
+      .from('evaluations')
+      .update({ reviewed: true })
+      .eq('id', id)
+      .select('id')
+
+    if (error) {
+      console.error('[Admin evaluations] review update error:', error.message)
+      return res.status(500).json({ error: 'Failed to update evaluation.' })
+    }
+
+    // If no rows were affected, the evaluation ID doesn't exist
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: 'Evaluation not found.' })
+    }
+
+    return res.json({ ok: true, id })
+  } catch (err) {
+    console.error('[Admin evaluations] Unexpected error:', err.message)
+    return res.status(500).json({ error: 'Failed to update evaluation.' })
+  }
+})
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FLOW 5 — USER MANAGEMENT (view, suspend, unsuspend accounts)
    ══════════════════════════════════════════════════════════════════════════ */
 
 /**

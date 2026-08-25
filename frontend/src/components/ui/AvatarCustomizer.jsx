@@ -46,7 +46,7 @@ function Section({ label, children, defaultOpen = true, forceCollapsed = false }
 }
 
 export default function AvatarCustomizer({ landscape = false }) {
-  const { avatar, setAvatar, setPhase } = useAppStore()
+  const { avatar, setAvatar, setPhase, isAuthenticated } = useAppStore()
   const isMobile = useIsSmallScreen()
   const { height: viewportHeight } = useViewportSize()
   const { isLandscape } = useOrientation()
@@ -76,7 +76,7 @@ export default function AvatarCustomizer({ landscape = false }) {
           <header className="flex flex-col gap-0.5">
             <h1 className="text-base font-semibold text-white">Shape your presence</h1>
             <p className="text-[11px] text-slate-500 leading-relaxed">
-              You are an energy form — no name, no face.
+              You are a form  no name, no face.
             </p>
           </header>
 
@@ -175,7 +175,7 @@ export default function AvatarCustomizer({ landscape = false }) {
           <Button
             variant="primary"
             fullWidth
-            onClick={() => setPhase('checkin')}
+            onClick={() => setPhase(isAuthenticated ? 'checkin' : 'space')}
           >
             Continue →
           </Button>
@@ -211,7 +211,7 @@ export default function AvatarCustomizer({ landscape = false }) {
           <header className="flex flex-col gap-0.5">
             <h1 className="text-sm font-semibold text-white">Shape your presence</h1>
             <p className="text-[10px] text-slate-500 leading-relaxed">
-              You are an energy form — no name, no face.
+              You are a form  no name, no face.
             </p>
           </header>
 
@@ -311,7 +311,7 @@ export default function AvatarCustomizer({ landscape = false }) {
           <Button
             variant="primary"
             fullWidth
-            onClick={() => setPhase('checkin')}
+            onClick={() => setPhase(isAuthenticated ? 'checkin' : 'space')}
           >
             Continue →
           </Button>
@@ -344,7 +344,7 @@ export default function AvatarCustomizer({ landscape = false }) {
         <header className="flex flex-col gap-0.5">
           <h1 className="text-base font-semibold text-white">Shape your presence</h1>
           <p className="text-[11px] text-slate-500 leading-relaxed">
-            You are an energy form — no name, no face.
+            You are a form  no name, no face.
           </p>
         </header>
 
@@ -441,7 +441,7 @@ export default function AvatarCustomizer({ landscape = false }) {
         <Button
           variant="primary"
           fullWidth
-          onClick={() => setPhase('checkin')}
+          onClick={() => setPhase(isAuthenticated ? 'checkin' : 'space')}
         >
           Continue →
         </Button>
