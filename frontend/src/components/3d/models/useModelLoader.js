@@ -141,6 +141,8 @@ export function useModelLoader(modelId, category, options = {}) {
   const timeoutRef = useRef(null)
   const startTimeRef = useRef(null)
   const cancelledRef = useRef(false)
+  const fallbackColorRef = useRef(fallbackColor)
+  fallbackColorRef.current = fallbackColor
 
   useEffect(() => {
     // Reset state on input change
@@ -188,7 +190,7 @@ export function useModelLoader(modelId, category, options = {}) {
 
         // Apply quality tier material adaptation
         const currentTier = getCurrentTier()
-        adaptMaterials(clonedScene, currentTier, fallbackColor)
+        adaptMaterials(clonedScene, currentTier, fallbackColorRef.current)
 
         // On low tier, enforce triangle budget
         if (currentTier === 'low') {
@@ -238,7 +240,7 @@ export function useModelLoader(modelId, category, options = {}) {
         timeoutRef.current = null
       }
     }
-  }, [modelId, category, timeout, fallbackColor])
+  }, [modelId, category, timeout])
 
   return {
     scene,

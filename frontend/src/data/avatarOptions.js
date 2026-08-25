@@ -163,10 +163,13 @@ export const AURA_COLORS = [
 ]
 
 export const PARTICLE_EFFECTS = [
-  { id: 'stardust', label: 'Stardust',      hint: 'Drifting motes' },
-  { id: 'rings',    label: 'Pulsing Rings', hint: 'Expanding halos' },
-  { id: 'firefly',  label: 'Fireflies',     hint: 'Slow dancing lights' },
-  { id: 'none',     label: 'None',          hint: 'Just the form' },
+  { id: 'stardust',  label: 'Stardust',      hint: 'Drifting motes' },
+  { id: 'firefly',   label: 'Fireflies',     hint: 'Slow blinking lights' },
+  { id: 'rings',     label: 'Pulsing Rings', hint: 'Expanding halos' },
+  { id: 'orbit',     label: 'Orbit Trail',   hint: 'Circling embers' },
+  { id: 'bubbles',   label: 'Bubbles',       hint: 'Floating upward' },
+  { id: 'lightning', label: 'Static',         hint: 'Crackling energy' },
+  { id: 'none',      label: 'None',          hint: 'Just the form' },
 ]
 
 /** Defaults used on first visit. */

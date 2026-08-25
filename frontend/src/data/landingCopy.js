@@ -31,7 +31,7 @@
 /** Hero section copy */
 export const HERO = {
   /** ≤60 chars, no technical jargon */
-  eyebrow: 'are you okay? just express yourself',
+  eyebrow: 'Let Your Emotions Roam the Cosmos',
   /** ≤120 chars, ≤8th grade reading level */
   subtitle: 'A safe space where you can share how you truly feel. No names, no judgment, just people who understand.',
 }
@@ -90,6 +90,6 @@ export const PLANET_DESCRIPTIONS = {
   },
   doodle: {
     tagline: 'When your words aren\u2019t enough, just draw.',
-    purpose: 'A freeform canvas where your feelings become shapes and colors \u2014 no explanation needed.',
+    purpose: 'A freeform canvas where your feelings become shapes and colors no explanation needed.',
   },
 }
