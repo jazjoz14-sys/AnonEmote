@@ -538,7 +538,8 @@ export default function LandingScreen() {
 
         {/* Sub */}
         <p className="mt-8 text-slate-400 text-sm md:text-base max-w-md text-center leading-relaxed font-light">
-          {HERO.subtitle}
+          A safe space where you can share how you truly feel.<br />
+          No names, no judgment, just people who understand.
         </p>
 
         {/* CTA — outline button using Button primitive */}
