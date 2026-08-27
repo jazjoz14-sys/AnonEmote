@@ -11,7 +11,7 @@ import AuthPromptModal from '../modals/AuthPromptModal'
  * are caught identically to top-level posts.
  */
 export default function ReplyThread({ post, accentColor }) {
-  const { sessionId, isAuthenticated, selectedPlanet } = useAppStore()
+  const { sessionId, isAuthenticated, selectedPlanet, setReportTarget } = useAppStore()
 
   const [expanded, setExpanded] = useState(false)
   const [replies, setReplies] = useState([])
@@ -117,13 +117,25 @@ export default function ReplyThread({ post, accentColor }) {
 
           {replies.map((r) => (
             <div key={r.id} className="text-xs text-slate-300 bg-white/[0.04]
-                                       rounded-lg px-2.5 py-2 leading-relaxed">
+                                       rounded-lg px-2.5 py-2 leading-relaxed group">
               <p className="break-words">{r.content}</p>
-              <span className="text-[10px] text-slate-600 mt-1 block">
-                {new Date(r.created_at).toLocaleTimeString([], {
-                  hour: '2-digit', minute: '2-digit',
-                })}
-              </span>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-[10px] text-slate-600">
+                  {new Date(r.created_at).toLocaleTimeString([], {
+                    hour: '2-digit', minute: '2-digit',
+                  })}
+                </span>
+                {/* Report button — visible on hover */}
+                <button
+                  onClick={() => setReportTarget({ id: r.id, content: r.content })}
+                  className="text-[10px] text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100
+                             transition-opacity"
+                  title="Report this reply"
+                  aria-label="Report this reply"
+                >
+                  ⚑
+                </button>
+              </div>
             </div>
           ))}
 
