@@ -195,10 +195,25 @@ export default function PlanetInfoPanel({ postsLoading = false, maxHeight }) {
                         <p className="break-words">{post.content}</p>
                       )}
                       <p className="text-xs text-slate-500 mt-1">
-                        {new Date(post.created_at).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                        {(() => {
+                          const postDate = new Date(post.created_at)
+                          const now = new Date()
+                          const diffMs = now - postDate
+                          const diffHrs = diffMs / (1000 * 60 * 60)
+                          if (diffHrs < 24) {
+                            // Within 24 hours — show time
+                            return postDate.toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          }
+                          // Older than 24 hours — show date
+                          return postDate.toLocaleDateString([], {
+                            month: 'short',
+                            day: 'numeric',
+                            year: postDate.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+                          })
+                        })()}
                       </p>
                       <ReactionBar post={post} accentColor={selectedPlanet.color} />
                       <ReplyThread post={post} accentColor={selectedPlanet.color} />

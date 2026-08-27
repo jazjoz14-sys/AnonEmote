@@ -344,7 +344,7 @@ export default function PostModal() {
               {/* ── Disclaimer (hidden on mobile) ──────────────────────────── */}
               {!isSmallScreen && (
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  AI-moderated for safety. Your session is never linked to your identity.
+                  AI-moderated for safety. Just Express yourself with respect.
                 </p>
               )}
 
