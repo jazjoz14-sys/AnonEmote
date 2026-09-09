@@ -4,9 +4,14 @@ import { apiFetch } from '../../lib/api'
 import AuthPromptModal from '../modals/AuthPromptModal'
 
 /**
- * ReplyThread — expandable replies section for a post on the Advice planet.
+ * ReplyThread — expandable replies section for a post on the Been There planet.
  *
- * Only renders when the parent post belongs to the 'advice' planet.
+ * Only renders when the parent post belongs to the 'advice' planet (the id is
+ * retained for stored data; the planet is labelled "Been There" in the UI).
+ *
+ * Copy here deliberately invites shared experience rather than advice. Untrained
+ * peers prescribing solutions for someone's mental health is the risk the
+ * planet's original "Seek Advice" framing invited.
  * Replies pass through the same moderation engine — crisis and toxic content
  * are caught identically to top-level posts.
  */
@@ -105,7 +110,7 @@ export default function ReplyThread({ post, accentColor }) {
           ? '▾ Hide replies'
           : replies.length > 0
             ? `▸ ${replies.length} ${replies.length === 1 ? 'reply' : 'replies'}`
-            : '💬 Offer advice'}
+            : '💬 Share your experience'}
       </button>
 
       {expanded && (
@@ -147,13 +152,13 @@ export default function ReplyThread({ post, accentColor }) {
                 className="text-xs text-violet-400 hover:text-violet-300 transition-colors
                            self-start px-1 py-0.5"
               >
-                + Sign in to offer advice
+                + Sign in to share your experience
               </button>
               <AuthPromptModal
                 open={showAuthPrompt}
                 onClose={() => setShowAuthPrompt(false)}
                 planetContext={selectedPlanet?.label || post.planet_id}
-                actionLabel="Sign in to offer advice"
+                actionLabel="Sign in to share your experience"
               />
             </>
           ) : !composing ? (
@@ -162,7 +167,7 @@ export default function ReplyThread({ post, accentColor }) {
               className="text-xs text-violet-400 hover:text-violet-300 transition-colors
                          self-start px-1 py-0.5"
             >
-              + Offer advice
+              + Share your experience
             </button>
           ) : (
             <div className="flex flex-col gap-1.5">
@@ -172,7 +177,7 @@ export default function ReplyThread({ post, accentColor }) {
                   if (e.target.value.length <= 280) setText(e.target.value)
                   if (status === 'blocked') setStatus('idle')
                 }}
-                placeholder="Share your perspective…"
+                placeholder="What was this like for you?"
                 rows={2}
                 autoFocus
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-2

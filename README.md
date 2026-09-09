@@ -33,7 +33,7 @@ be stored.
 |---|---|
 | Joy | Positive moments and celebrations |
 | Venting | Frustrations and letting off steam |
-| Seek Advice | Questions that support one-level replies |
+| Been There | Shared experience; supports one-level replies |
 | Grief & Loss | Processing loss and mourning |
 | Anxiety | Worries and overwhelm |
 | Reflections | Introspective thoughts and insights |
@@ -48,7 +48,7 @@ be stored.
 | Hybrid AI moderation | Crisis keywords (EN/TL/BCL) → vernacular toxicity → Google Perspective API |
 | Crisis intervention | Referral modal with PH hotlines; user's draft is preserved, never discarded |
 | Reactions | Empathy-only emoji (🫂💙😢🌱✨) — no likes, downvotes, or ranking |
-| Replies | One-level replies on Seek Advice planet only |
+| Replies | One-level replies on Been There planet only |
 | Reporting | Privacy-preserving HMAC-SHA256 deduplication; auto-quarantine after multiple independent reports |
 | Admin console | Activity monitoring, content review, editable lexicon, real-time SSE event stream |
 | Multiplayer presence | Supabase Realtime + Presence for live peer avatars in the 3D scene |

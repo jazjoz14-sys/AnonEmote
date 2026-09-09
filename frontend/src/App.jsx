@@ -51,20 +51,18 @@ export default function App() {
     loadPrivateNotes()
   }, [initAuth, initSession, initGraphics, loadPrivateNotes])
 
-  // Auto-open post modal when a planet is selected (only for authenticated users)
-  // For guests, show the AuthPromptModal instead
+  // Selecting a planet only opens the post feed (PlanetInfoPanel) — reading
+  // comes first. The composer is opened deliberately via the panel's
+  // "Broadcast" button, which also handles guest write-gating.
+  //
+  // Deselecting a planet tears down any composer that was open, so the modal
+  // can never outlive the planet it belongs to.
   useEffect(() => {
-    if (selectedPlanet && isAuthenticated) {
-      // Authenticated users get the post modal auto-opened when selecting a planet
-      setPostModalOpen(true)
-      setAuthPromptOpen(false)
-    } else if (!selectedPlanet) {
+    if (!selectedPlanet) {
       setPostModalOpen(false)
       setAuthPromptOpen(false)
     }
-    // Guests: do nothing when selecting a planet — they can browse posts freely.
-    // Write-gating is handled by PlanetInfoPanel's "Broadcast" button.
-  }, [selectedPlanet, isAuthenticated, setPostModalOpen])
+  }, [selectedPlanet, setPostModalOpen])
 
   // The admin console renders on its own — the 3D canvas is never mounted here,
   // which also avoids allocating a WebGL context for administrative work.

@@ -42,9 +42,9 @@ export const FEELINGS = [
     ],
   },
   {
-    id: 'advice',           // → seek advice planet
+    id: 'advice',           // → been there planet
     label: 'Unsure',
-    sub: 'I need perspective',
+    sub: 'I want to hear from someone who gets it',
     emoji: '🌿',
     color: '#10b981',
     nuances: [
@@ -52,7 +52,7 @@ export const FEELINGS = [
       { id: 'lost',       label: 'Lost',        prompt: "What are you trying to figure out?" },
       { id: 'doubting',   label: 'Second-guessing', prompt: 'What choice keeps replaying in your head?' },
       { id: 'stuck',      label: 'Stuck',       prompt: 'What have you already tried?' },
-      { id: 'curious',    label: 'Curious',     prompt: 'What would you like other people to weigh in on?' },
+      { id: 'curious',    label: 'Curious',     prompt: 'What would you like to hear other people\'s experience with?' },
       { id: 'conflicted', label: 'Conflicted',  prompt: "What are the two sides pulling at you?" },
     ],
   },

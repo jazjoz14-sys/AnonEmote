@@ -133,7 +133,7 @@ describe('LandingScreen — Mobile path (viewport < 768px)', () => {
     const expectedLabels = [
       'Joy',
       'Venting',
-      'Seek Advice',
+      'Been There',
       'Grief & Loss',
       'Anxiety',
       'Reflections',
@@ -177,7 +177,7 @@ describe('LandingScreen — Mobile path (viewport < 768px)', () => {
     const expectedLabels = [
       'Joy',
       'Venting',
-      'Seek Advice',
+      'Been There',
       'Grief & Loss',
       'Anxiety',
       'Reflections',

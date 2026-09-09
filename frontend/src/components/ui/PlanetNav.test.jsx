@@ -151,7 +151,7 @@ describe('Feature: responsive-pwa-layout, Property 6: Active Planet Indicator Co
 const NARROW_LABELS = {
   joy: 'Joy',
   vent: 'Vent',
-  advice: 'Advice',
+  advice: 'Been',
   grief: 'Grief',
   anxiety: 'Anx',
   neutral: 'Reflect',

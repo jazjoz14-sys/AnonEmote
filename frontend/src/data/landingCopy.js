@@ -73,8 +73,8 @@ export const PLANET_DESCRIPTIONS = {
     purpose: 'Let frustrations and academic burnout flow out \u2014 no filter, no consequence, just release.',
   },
   advice: {
-    tagline: 'You\u2019re not alone in figuring any of this out.',
-    purpose: 'Ask for peer guidance and receive fresh perspectives from students who have walked the same path.',
+    tagline: 'You\u2019re not the first one to feel this way.',
+    purpose: 'Say what you\u2019re carrying and hear from students who have been through the same thing themselves.',
   },
   grief: {
     tagline: 'Your sadness has a safe place right here.',

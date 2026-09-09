@@ -12,7 +12,7 @@ export const termsAndConditions = [
     body:
       'AnonEmote is a web-based anonymous emotional support platform designed for Filipino college students. ' +
       'The platform provides a safe, judgment-free space where users can express their feelings through a 3D star system ' +
-      'with seven emotion planets (Joy, Venting, Seek Advice, Grief & Loss, Anxiety, Reflections, and Doodle Drift). ' +
+      'with seven emotion planets (Joy, Venting, Been There, Grief & Loss, Anxiety, Reflections, and Doodle Drift). ' +
       'AnonEmote is not a replacement for professional mental health services. If you are experiencing a mental health crisis, ' +
       'please contact a licensed professional or a crisis hotline immediately.',
   },

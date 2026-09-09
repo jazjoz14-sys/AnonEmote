@@ -47,9 +47,9 @@ const PLANET_DETAILS = {
     traits: ['Release', 'Frustration', 'Catharsis'],
   },
   advice: {
-    purpose: 'Ask for peer guidance, fresh perspectives, and community wisdom — anonymously.',
-    quote: '"The only true wisdom is in knowing you know nothing." — Socrates',
-    traits: ['Guidance', 'Community', 'Wisdom'],
+    purpose: 'Say what you\'re carrying and hear from students who have been through it themselves.',
+    quote: '"No one is useless in this world who lightens the burden of another." — Charles Dickens',
+    traits: ['Solidarity', 'Experience', 'Company'],
   },
   grief: {
     purpose: 'A quiet corner for processing sadness, loss, heartbreak, and the heavy moments.',
@@ -85,9 +85,9 @@ const PLANET_DATA = [
     quote: '"It\'s okay to not be okay."',
   },
   {
-    id: 'advice', name: 'Seek Advice', color: '#10b981',
-    tagline: 'Ask for guidance anonymously.',
-    quote: '"True wisdom is knowing you know nothing."',
+    id: 'advice', name: 'Been There', color: '#10b981',
+    tagline: 'Someone else has felt this too.',
+    quote: '"No one is useless who lightens another\'s burden."',
   },
   {
     id: 'grief', name: 'Grief & Loss', color: '#6366f1',

@@ -91,7 +91,7 @@ repliesRouter.post('/', limiter, requireAuth, async (req, res) => {
   }
 
   if (parent.planet_id !== 'advice') {
-    return res.status(403).json({ error: 'Replies are only enabled on the Seek Advice planet.' })
+    return res.status(403).json({ error: 'Replies are only enabled on the Been There planet.' })
   }
 
   // Moderate the reply content

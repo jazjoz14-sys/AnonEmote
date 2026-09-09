@@ -74,7 +74,7 @@ describe('Property 6: Fallback Receives Identical Interaction Props', () => {
   const testPlanets = [
     { id: 'joy', color: '#FFD93D', size: 2.2, label: 'Joy', emoji: '☀️' },
     { id: 'vent', color: '#FF6B6B', size: 2.0, label: 'Venting', emoji: '🌋' },
-    { id: 'advice', color: '#4ECDC4', size: 1.8, label: 'Seek Advice', emoji: '🔮' },
+    { id: 'advice', color: '#4ECDC4', size: 1.8, label: 'Been There', emoji: '🔮' },
     { id: 'grief', color: '#9B59B6', size: 1.9, label: 'Grief & Loss', emoji: '🌙' },
     { id: 'anxiety', color: '#F39C12', size: 1.7, label: 'Anxiety', emoji: '⚡' },
     { id: 'neutral', color: '#95A5A6', size: 2.1, label: 'Reflections', emoji: '💭' },

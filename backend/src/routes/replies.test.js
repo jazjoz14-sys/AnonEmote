@@ -194,7 +194,7 @@ describe('POST /api/replies — Validation', () => {
 
       expect(res.status).toHaveBeenCalledWith(403)
       expect(res._json).toEqual({
-        error: 'Replies are only enabled on the Seek Advice planet.',
+        error: 'Replies are only enabled on the Been There planet.',
       })
     })
 
@@ -217,7 +217,7 @@ describe('POST /api/replies — Validation', () => {
 
       expect(res.status).toHaveBeenCalledWith(403)
       expect(res._json).toEqual({
-        error: 'Replies are only enabled on the Seek Advice planet.',
+        error: 'Replies are only enabled on the Been There planet.',
       })
     })
 
@@ -244,7 +244,7 @@ describe('POST /api/replies — Validation', () => {
 
         expect(res.status).toHaveBeenCalledWith(403)
         expect(res._json.error).toBe(
-          'Replies are only enabled on the Seek Advice planet.'
+          'Replies are only enabled on the Been There planet.'
         )
       }
     })

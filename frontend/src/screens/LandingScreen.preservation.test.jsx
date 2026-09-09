@@ -62,7 +62,7 @@ vi.mock('../data/planets', () => ({
   PLANETS: [
     { id: 'joy', label: 'Joy', color: '#f59e0b', description: 'Celebrate' },
     { id: 'vent', label: 'Venting', color: '#3b82f6', description: 'Release' },
-    { id: 'advice', label: 'Seek Advice', color: '#10b981', description: 'Ask' },
+    { id: 'advice', label: 'Been There', color: '#10b981', description: 'Ask' },
     { id: 'grief', label: 'Grief & Loss', color: '#6366f1', description: 'Process' },
     { id: 'anxiety', label: 'Anxiety', color: '#ec4899', description: 'Name' },
     { id: 'neutral', label: 'Reflections', color: '#94a3b8', description: 'Observe' },

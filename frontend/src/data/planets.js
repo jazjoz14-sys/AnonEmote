@@ -70,10 +70,12 @@ const BASE_PLANETS = [
     ringColor: 'rgba(59,130,246,0.3)',
   },
   {
+    // NOTE: the id stays 'advice' — it is a stored value in posts.planet_id and
+    // is gated on in ReplyThread and the backend routes. Only the label changed.
     id: 'advice',
-    label: 'Seek Advice',
+    label: 'Been There',
     emoji: '🌿',
-    description: 'Ask for guidance, perspective, and peer wisdom.',
+    description: 'Share what you\'re going through and hear from people who have felt it too.',
     color: '#10b981',
     emissive: '#064e3b',
     orbitRadius: 28,
@@ -175,7 +177,7 @@ const PLANET_ANIMATION_CONFIG = {
  * Resulting periods (approx):
  *   Joy         r=12  →   35s
  *   Venting     r=20  →   75s
- *   Advice      r=28  →  125s
+ *   Been There  r=28  →  125s
  *   Grief       r=36  →  182s
  *   Anxiety     r=44  →  246s
  *   Reflections r=52  →  317s

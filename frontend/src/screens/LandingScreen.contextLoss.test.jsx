@@ -90,7 +90,7 @@ vi.mock('../data/planets', () => ({
   PLANETS: [
     { id: 'joy', label: 'Joy', color: '#f59e0b', size: 1.2, spinSpeed: 0.25 },
     { id: 'vent', label: 'Venting', color: '#3b82f6', size: 1.1, spinSpeed: 0.22 },
-    { id: 'advice', label: 'Seek Advice', color: '#10b981', size: 1.0, spinSpeed: 0.20 },
+    { id: 'advice', label: 'Been There', color: '#10b981', size: 1.0, spinSpeed: 0.20 },
     { id: 'grief', label: 'Grief & Loss', color: '#6366f1', size: 1.15, spinSpeed: 0.24 },
     { id: 'anxiety', label: 'Anxiety', color: '#ec4899', size: 1.05, spinSpeed: 0.21 },
     { id: 'neutral', label: 'Reflections', color: '#94a3b8', size: 1.1, spinSpeed: 0.23 },
@@ -206,7 +206,7 @@ describe('Context Loss Fallback Behavior (Req 5.8, 8.3)', () => {
     // All 7 planet labels should still be visible in the info panels
     expect(screen.getAllByText('Joy').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Venting').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Seek Advice').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Been There').length).toBeGreaterThan(0)
   })
 
   it('removes 3D Views (drei-view) from DOM after context loss', () => {
